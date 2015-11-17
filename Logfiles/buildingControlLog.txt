@@ -1,0 +1,160 @@
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 373
+2015-11-17 03:05:26,304-buildingControl-INFO: Finished, exitCode is 2
+2015-11-17 03:05:38,457-buildingControl-INFO: buildingControl.py started and PID is: 4176
+2015-11-17 03:05:40,225-buildingControl-INFO: Watts:373, recentAvg: 373
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 03:09:34,624-buildingControl-INFO: Finished, exitCode is 2
+2015-11-17 03:09:45,451-buildingControl-INFO: buildingControl.py started and PID is: 6032
+2015-11-17 03:09:47,199-buildingControl-INFO: Watts:375, recentAvg: 375
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 03:10:01,214-buildingControl-INFO: Watts:375, recentAvg: 375
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 03:15:00,391-buildingControl-INFO: Watts:356, recentAvg: 365
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 369
+2015-11-17 03:20:03,968-buildingControl-INFO: Watts:357, recentAvg: 354
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 354
+2015-11-17 03:25:04,101-buildingControl-INFO: Watts:356, recentAvg: 355
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 354
+2015-11-17 03:30:00,480-buildingControl-INFO: Watts:353, recentAvg: 354
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 354
+2015-11-17 03:35:00,379-buildingControl-INFO: Watts:358, recentAvg: 354
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 354
+2015-11-17 03:40:01,115-buildingControl-INFO: Watts:358, recentAvg: 354
+
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 354
+2015-11-17 04:36:05,052-readTFsensors.py-INFO: readTFsensors.py started and PID is: 2684
+2015-11-17 04:36:21,532-buildingControl-INFO: buildingControl.py started and PID is: 1196
+2015-11-17 04:36:24,541-buildingControl-ERROR: INSERT INTO `building_templog` () VALUES ('2015-11-17 04:36:24', 14.4, 20.3, 16.4, 0, 0, 6.5, 10);Unable to write TF sensor values into local DB!['Traceback (most recent call last):\n', '  File "C:\\Users\\matthias\\Dropbox\\BuildingControl\\myFunctions.py", line 749, in executeSQL\n    result = mySQLdbCursorObj.execute( sqlCmd )\n', '  File "c:\\python34\\lib\\site-packages\\pymysql\\cursors.py", line 132, in execute\n    result = self._query(query)\n', '  File "c:\\python34\\lib\\site-packages\\pymysql\\cursors.py", line 271, in _query\n    conn.query(q)\n', '  File "c:\\python34\\lib\\site-packages\\pymysql\\connections.py", line 726, in query\n    self._affected_rows = self._read_query_result(unbuffered=unbuffered)\n', '  File "c:\\python34\\lib\\site-packages\\pymysql\\connections.py", line 861, in _read_query_result\n    result.read()\n', '  File "c:\\python34\\lib\\site-packages\\pymysql\\connections.py", line 1064, in read\n    first_packet = self.connection._read_packet()\n', '  File "c:\\python34\\lib\\site-packages\\pymysql\\connections.py", line 826, in _read_packet\n    packet.check_error()\n', '  File "c:\\python34\\lib\\site-packages\\pymysql\\connections.py", line 370, in check_error\n    raise_mysql_exception(self._data)\n', '  File "c:\\python34\\lib\\site-packages\\pymysql\\err.py", line 116, in raise_mysql_exception\n    _check_mysql_exception(errinfo)\n', '  File "c:\\python34\\lib\\site-packages\\pymysql\\err.py", line 112, in _check_mysql_exception\n    raise InternalError(errno, errorvalue)\n', 'pymysql.err.InternalError: (145, "Table \'.\\\\monitoring\\\\building_templog\' is marked as crashed and should be repaired")\n'] RESULT was: 0
+2015-11-17 04:36:24,663-buildingControl-INFO: Watts:377, recentAvg: 371
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 04:40:01,064-buildingControl-INFO: Watts:379, recentAvg: 369
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 357
+2015-11-17 04:45:00,924-buildingControl-INFO: Watts:358, recentAvg: 360
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 371
+2015-11-17 04:50:00,882-buildingControl-INFO: Watts:354, recentAvg: 355
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 356
+2015-11-17 04:54:48,816-buildingControl-INFO: Finished, exitCode is 2
+2015-11-17 04:55:39,965-buildingControl-INFO: buildingControl.py started and PID is: 2196
+2015-11-17 04:55:41,697-buildingControl-INFO: Watts:378, recentAvg: 378
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 05:00:00,699-buildingControl-INFO: Watts:358, recentAvg: 356
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 354
+2015-11-17 05:00:32,634-buildingControl-INFO: Finished, exitCode is 2
+2015-11-17 06:13:04,958-buildingControl-INFO: buildingControl.py started and PID is: 4768
+2015-11-17 06:13:07,062-buildingControl-INFO: Watts:420, recentAvg: 420
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 06:13:07,177-buildingControl-INFO: settings.xml contained instruction to WOL AVROOM
+2015-11-17 06:13:07,182-buildingControl-INFO: WOL - Result from trying to wake_on_Lan 0019B910C598 was 126.
+2015-11-17 06:14:05,352-buildingControl-INFO: settings.xml contained instruction to WOL AVROOM
+2015-11-17 06:14:05,357-buildingControl-INFO: WOL - Result from trying to wake_on_Lan 0019B910C598 was 126.
+2015-11-17 06:15:00,406-buildingControl-INFO: Watts:426, recentAvg: 428
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 06:15:03,425-buildingControl-INFO: settings.xml contained instruction to WOL AVROOM
+2015-11-17 06:15:03,430-buildingControl-INFO: WOL - Result from trying to wake_on_Lan 0019B910C598 was 126.
+2015-11-17 06:16:01,612-buildingControl-INFO: settings.xml contained instruction to WOL AVROOM
+2015-11-17 06:16:01,617-buildingControl-INFO: WOL - Result from trying to wake_on_Lan 0019B910C598 was 126.
+2015-11-17 06:16:01,732-buildingControl-INFO: Finished, exitCode is 2
+2015-11-17 06:16:08,875-buildingControl-INFO: buildingControl.py started and PID is: 1256
+2015-11-17 06:16:10,752-buildingControl-INFO: Watts:435, recentAvg: 435
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 06:20:01,590-buildingControl-INFO: Watts:409, recentAvg: 406
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 401
+2015-11-17 06:25:03,738-buildingControl-INFO: Watts:406, recentAvg: 406
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 404
+2015-11-17 06:30:00,629-buildingControl-INFO: Watts:315, recentAvg: 367
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 321
+2015-11-17 06:35:00,873-buildingControl-INFO: Watts:310, recentAvg: 313
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 313
+2015-11-17 06:40:00,487-buildingControl-INFO: Watts:309, recentAvg: 309
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 309
+2015-11-17 06:45:00,725-buildingControl-INFO: Watts:309, recentAvg: 310
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 309
+2015-11-17 06:50:01,182-buildingControl-INFO: Watts:311, recentAvg: 310
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 309
+2015-11-17 06:54:39,909-buildingControl-INFO: Finished, exitCode is 2
+2015-11-17 06:54:44,797-buildingControl-INFO: buildingControl.py started and PID is: 1800
+2015-11-17 06:54:47,066-buildingControl-INFO: {'code': 422, 'message': {'heating_on': ['The heating on must be a number.']}}
+2015-11-17 06:54:47,406-buildingControl-INFO: Watts:367, recentAvg: 339
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 06:55:00,257-buildingControl-INFO: Watts:367, recentAvg: 363
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 07:00:03,359-buildingControl-INFO: Watts:370, recentAvg: 365
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 362
+2015-11-17 07:05:00,422-buildingControl-INFO: Watts:352, recentAvg: 353
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 351
+2015-11-17 07:10:01,584-buildingControl-INFO: {'code': 422, 'message': {'heating_on': ['The heating on field must be true or false.']}}
+2015-11-17 07:10:01,818-buildingControl-INFO: Watts:341, recentAvg: 346
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 344
+2015-11-17 07:15:00,699-buildingControl-INFO: {'code': 422, 'message': {'heating_on': ['The heating on field must be true or false.']}}
+2015-11-17 07:15:00,948-buildingControl-INFO: Watts:339, recentAvg: 340
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 340
+2015-11-17 07:20:01,149-buildingControl-INFO: {'code': 422, 'message': {'heating_on': ['The heating on field must be true or false.']}}
+2015-11-17 07:20:01,383-buildingControl-INFO: Watts:314, recentAvg: 314
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 312
+2015-11-17 07:25:00,873-buildingControl-INFO: Watts:308, recentAvg: 310
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 312
+2015-11-17 07:30:00,285-buildingControl-INFO: Watts:310, recentAvg: 309
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 308
+2015-11-17 07:35:00,601-buildingControl-INFO: {'code': 422, 'message': {'heating_on': ['The heating on field must be true or false.']}}
+2015-11-17 07:35:00,835-buildingControl-INFO: Watts:308, recentAvg: 309
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 308
+2015-11-17 07:40:01,105-buildingControl-INFO: {'code': 422, 'message': {'heating_on': ['The heating on field must be true or false.']}}
+2015-11-17 07:40:01,354-buildingControl-INFO: Watts:307, recentAvg: 308
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 308
+2015-11-17 07:45:00,906-buildingControl-INFO: {'code': 422, 'message': {'heating_on': ['The heating on field must be true or false.']}}
+2015-11-17 07:45:01,140-buildingControl-INFO: Watts:307, recentAvg: 308
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 308
+2015-11-17 07:50:00,504-buildingControl-INFO: Watts:309, recentAvg: 310
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 309
+2015-11-17 07:55:00,619-buildingControl-INFO: Watts:308, recentAvg: 309
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 309
+2015-11-17 08:00:01,075-buildingControl-INFO: Watts:313, recentAvg: 314
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 313
+2015-11-17 08:05:00,755-buildingControl-INFO: Watts:313, recentAvg: 324
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 313
+2015-11-17 08:10:03,258-buildingControl-INFO: Watts:313, recentAvg: 311
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 313
+2015-11-17 08:15:00,704-buildingControl-INFO: Watts:312, recentAvg: 310
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 309
+2015-11-17 08:20:00,277-buildingControl-INFO: Watts:377, recentAvg: 370
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 310
+2015-11-17 08:25:00,270-buildingControl-INFO: Watts:374, recentAvg: 373
+Fridge on? True	Heating on? False	Power Alert? False	Lowest value: 377
+2015-11-17 08:30:00,525-buildingControl-INFO: Watts:375, recentAvg: 375
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 377
+2015-11-17 08:35:00,313-buildingControl-INFO: Watts:371, recentAvg: 373
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 372
+2015-11-17 08:40:00,616-buildingControl-INFO: Watts:370, recentAvg: 371
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 372
+2015-11-17 08:45:01,015-buildingControl-INFO: Watts:377, recentAvg: 375
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 372
+2015-11-17 08:50:00,543-buildingControl-INFO: Watts:314, recentAvg: 322
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 313
+2015-11-17 08:52:08,324-buildingControl-INFO: Finished, exitCode is 2
+2015-11-17 08:53:08,111-buildingControl-INFO: buildingControl.py started and PID is: 1984
+2015-11-17 08:53:10,005-buildingControl-INFO: {'message': {'heating_on': ['The heating on field must be true or false.']}, 'code': 422}
+2015-11-17 08:53:10,289-buildingControl-INFO: Watts:331, recentAvg: 331
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 08:55:00,555-buildingControl-INFO: Watts:367, recentAvg: 365
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 08:56:05,919-buildingControl-INFO: Finished, exitCode is 2
+2015-11-17 08:56:14,887-buildingControl-INFO: buildingControl.py started and PID is: 2708
+2015-11-17 08:56:17,066-buildingControl-INFO: {'code': 422, 'message': {'heating_on': ['The heating on field must be true or false.']}}
+2015-11-17 08:56:17,348-buildingControl-INFO: Watts:368, recentAvg: 368
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 08:59:12,042-buildingControl-INFO: Finished, exitCode is 2
+2015-11-17 08:59:19,643-buildingControl-INFO: buildingControl.py started and PID is: 732
+2015-11-17 08:59:21,709-buildingControl-INFO: Watts:373, recentAvg: 364
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 09:00:00,933-buildingControl-INFO: Watts:369, recentAvg: 372
+Fridge on? False	Heating on? False	Power Alert? False	Lowest value: 0
+2015-11-17 09:03:13,582-buildingControl-INFO: Finished, exitCode is 2
