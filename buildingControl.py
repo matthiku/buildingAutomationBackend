@@ -27,11 +27,11 @@
 #===============================================================================+
 # CHANGELOG                                                                     |
 #                                                                               |
-# 08-JAN-2015 Step 1 above has changed:                                         |
+# 08-JAN-2015 Step 1 above has changed                                          |
 #                                                                               |
 #-------------------------------------------------------------------------------+
 #
-# TODO: - provide for individual IP addr for TF sensors etc
+# TODO: - Avoid possible flooding with writeApiPowerLog calls
 # 
 #-------------------------------------------------------------------------------+
 
@@ -827,9 +827,9 @@ if __name__ == '__main__':
 
 
         #---------------------------------------------------------------------------------------------------
-        # only write to REMOTE DB when value change is bigger than 1 Watt! (which is the reading tolerance)
+        # only write to REMOTE DB when value change is bigger than 5 Watt! 
         #---------------------------------------------------------------------------------------------------
-        if abs(watts - oldWatts) > 1:
+        if abs(watts - oldWatts) > 5:  # tolerance changed to 5 Watt
             now     = datetime.datetime.now()
             prev    = now - datetime.timedelta(seconds=1)  # get timestamp from previous reading
             boiler_on, heating_on = checkHeatingStatus(tfConn)

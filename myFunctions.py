@@ -91,6 +91,15 @@ apiItems = {
                         'client_secret' : 'RYGnyjKP',
                      }
 } 
+
+''' TODO '''
+def handleAPIerrors(requestsResult, activity):
+    print(r.status_code)
+    if r.status_code  < 500: Logger.info( r.json() )
+    else:                    Logger.info( r.text )
+    Logger.error("Error when trying to " + activity + \
+        " remote DB via RESTful API! Status code: "+str(r.status_code))
+
 ''' request a new access token from remote REST API 
     return access_token and expiration time in seconds
 '''
@@ -116,9 +125,7 @@ def getSettings(lclSQLcursor):
     checkToken()
     r = requests.get( apiItems['url']+'settings?access_token='+apiItems['accToken'] )
     if not r.status_code == 200:
-        if r.status_code  < 500: Logger.info( r.json() )
-        else:                    Logger.info( r.text )
-        Logger.error("Unable to read settings table from remote DB via RESTful API! Status code: "+str(r.status_code))
+        handleAPIerrors(r, "read settings table from")
         # since online settngs are unavailable, fall back to local settings backup
         return getLclSettings(lclSQLcursor)
     # returned data is in JSON format
@@ -151,10 +158,8 @@ def writeApiPowerLog(watts, boiler_on, heating_on, tstamp):
         'updated_at'   : tstamp.strftime("%Y-%m-%d %H:%M:%S"),
         'access_token' : apiItems['accToken']  }
     r = requests.post(apiItems['url']+'powerlog', data=payload)
-    if not r.status_code == 201: # 201=new record created
-        if r.status_code  < 500: Logger.info( r.json() )
-        else:                    Logger.info( r.text )
-        Logger.exception("Unable to write power data to remote API! Status code: "+str(r.status_code))
+    if not r.status_code == 201: # (201=new record created)
+        handleAPIerrors(r, "write power data to")
 
 ''' write TempLog data into remote DB via buildingAPI '''
 def writeApiTempLog(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on):
@@ -170,9 +175,7 @@ def writeApiTempLog(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on
     r = requests.post(apiItems['url']+'templog', data=payload)
     if not r.status_code == 201: # 201=new record created
         print(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on)
-        if r.status_code  < 500: Logger.info( r.json() )
-        else:                    Logger.info( r.text )
-        Logger.exception("Unable to write tempLog data to remote API! Status code: "+str(r.status_code))
+        handleAPIerrors(r, "write tempLog data t")
 
 ''' write BuildingLog data into remote DB via buildingAPI '''
 def writeApiBuildingLog(what, where, text):
@@ -184,9 +187,7 @@ def writeApiBuildingLog(what, where, text):
         'access_token' : apiItems['accToken']  }
     r = requests.post(apiItems['url']+'buildinglog', data=payload)
     if not r.status_code == 201: # 201=new record created
-        if r.status_code  < 500: Logger.info( r.json() )
-        else:                    Logger.info( r.text )
-        Logger.exception("Unable to write buildingLog data to remote API! Status code: "+str(r.status_code))
+        handleAPIerrors(r, "write buildingLog data to")
 
 def writeApiEventLog( id, estOn='00:00', actOn='00:00', actOff='00:00' ):
     checkToken()
@@ -198,19 +199,16 @@ def writeApiEventLog( id, estOn='00:00', actOn='00:00', actOff='00:00' ):
         'access_token' : apiItems['accToken']  }
     r = requests.post(apiItems['url']+'eventlog', data=payload)
     if not r.status_code == 201: # 201=new record created
-        if r.status_code  < 500: Logger.info( r.json() )
-        else:                    Logger.info( r.text )
-        Logger.exception("Unable to write eventLog data to remote API! Status code: "+str(r.status_code))
+        handleAPIerrors(r, "write eventLog data to")
 
 ''' set nextdate of a certain event (once an event is over) '''
 def writeApiEventNextdate(id, nextdate):
     checkToken()
+    print("# "*90)
     payload = { 'access_token' : apiItems['accToken']  }
     r = requests.patch( apiItems['url']+'events/'+id+'/nextdate/'+nextdate, data=payload )
     if not r.status_code == 202: # 201=new record created
-        if r.status_code  < 500: Logger.info( r.json() )
-        else:                    Logger.info( r.text )
-        Logger.exception("Unable to write event nextdate via remote API! Status code: "+str(r.status_code))
+        handleAPIerrors(r, "write event nextdate via")
 
 ''' update status of a certain event (after changes were made) '''
 def updateApiEventStatus(id, status):
@@ -218,9 +216,7 @@ def updateApiEventStatus(id, status):
     payload = { 'access_token' : apiItems['accToken']  }
     r = requests.patch( apiItems['url']+'events/'+str(id)+'/status/'+status, data=payload )
     if not r.status_code == 202: # 201=new record created
-        if r.status_code  < 400: Logger.info( r.json() )
-        else:                    Logger.info( r.text )
-        Logger.exception("Unable to update event status via remote API! Status code: "+str(r.status_code))
+        handleAPIerrors(r, "update event status via")
         return
     Logger.info( "Event with id " + str(id) + " was updated to status " + status + ". API call Result: " + str(r.json()) )
 
