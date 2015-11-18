@@ -64,7 +64,7 @@ from tinkerforge.bricklet_motion_detector import MotionDetector
 
 
 # my own functions
-from myFunctions import *
+from libFunctions import *
 
 
 
@@ -162,7 +162,7 @@ editedRecFilePath  = "Exchange\Audio for Uploading"
 
 # get last modify date of this script
 scriptChangeDate = os.path.getmtime(__file__)
-myFuncChangeDate = os.path.getmtime('myFunctions.py')
+myFuncChangeDate = os.path.getmtime('libFunctions.py')
 
 
 
@@ -996,8 +996,8 @@ if __name__ == '__main__':
                     broadcast(__file__ + " Source code was changed - exiting script...")
                     exitCode=2
                     break
-            if ( myFuncChangeDate != os.path.getmtime('myFunctions.py') ):
-                    broadcast("myFunctions.py script was changed - exiting script...")
+            if ( myFuncChangeDate != os.path.getmtime('libFunctions.py') ):
+                    broadcast("libFunctions.py script was changed - exiting script...")
                     exitCode=2
                     break
        

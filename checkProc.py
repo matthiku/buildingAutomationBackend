@@ -85,7 +85,7 @@
 #                                                                               |
 # 30-MAR-2015 Streamlining output, removing excess lines                        |
 #                                                                               |
-# 01-APR-2015 outsourcing getLastTempHumid to myFunctions                       |
+# 01-APR-2015 outsourcing getLastTempHumid to libFunctions                       |
 #             as it's also used by buildingControl.py                           |
 #                                                                               |
 # 14-APR-2015 a) improving TTY output with colours and better formatting        |
@@ -111,14 +111,14 @@ import traceback
 import subprocess
 import shutil
 
-from myFunctions import checkCurrentEvent
-from myFunctions import getCurrentPower
-from myFunctions import getMySQLconn
-from myFunctions import getWeather
-from myFunctions import formatSeconds
-from myFunctions import hilite
-from myFunctions import getLastTempHumid
-from myFunctions import getCurrentTAN
+from libFunctions import checkCurrentEvent
+from libFunctions import getCurrentPower
+from libFunctions import getMySQLconn
+from libFunctions import getWeather
+from libFunctions import formatSeconds
+from libFunctions import hilite
+from libFunctions import getLastTempHumid
+from libFunctions import getCurrentTAN
 
 # determine host os # ('win32' or 'linux2')
 onWindows = False

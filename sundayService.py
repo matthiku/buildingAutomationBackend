@@ -59,7 +59,7 @@ print('Started')
 
 
 # my own functions
-from myFunctions import *
+from libFunctions import *
 
     
 
@@ -94,7 +94,7 @@ soundRecordingFile           = "C:\\DATA\\sunday.wma"
 # get last modify date of this script
 #------------------------------------------------------------------------
 scriptChangeDate = os.path.getmtime(__file__)
-myFuncChangeDate = os.path.getmtime('myFunctions.py')
+myFuncChangeDate = os.path.getmtime('libFunctions.py')
 
 
 #------------------------------------------------------------------------
@@ -354,8 +354,8 @@ if __name__ == '__main__':
             if ( scriptChangeDate != os.path.getmtime(__file__) ):
                     print("Source code was changed - exiting script...")
                     break
-            if ( myFuncChangeDate != os.path.getmtime('myFunctions.py') ):
-                    print("myFunctions.py script was changed - exiting script...")
+            if ( myFuncChangeDate != os.path.getmtime('libFunctions.py') ):
+                    print("libFunctions.py script was changed - exiting script...")
                     break
 
         

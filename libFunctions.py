@@ -94,20 +94,20 @@ apiItems = {
 
 ''' write HTML code returned from failed API call in to a file '''
 def writeErrorHtml(html):
-    fname = os.path.join( logDir, 'APIerror.html' )
+    fname = os.path.join( 'Logfiles', 'APIerror.html' )
     fhandle = open(fname, 'w')
     fhandle.write(html)
     fhandle.close()
 
 ''' Handle unexpected data returned from API call '''
 def handleAPIerrors(requestsResult, activity):
-    if (r.text)[:15] == "<!DOCTYPE html>": # API call returned a HTML page!
-        writeErrorHtml(r.text)
+    if (requestsResult.text)[:15] == "<!DOCTYPE html>": # API call returned a HTML page!
+        writeErrorHtml(requestsResult.text)
     else:
-        if   r.status_code  < 500: Logger.info( r.json() )
-        else:                      Logger.info( r.text )
+        if   requestsResult.status_code  < 500: Logger.info( requestsResult.json() )
+        else:                      Logger.info( requestsResult.text )
     Logger.error("Error when trying to " + activity + \
-        " remote DB via RESTful API! Status code: "+str(r.status_code))
+        " remote DB via RESTful API! Status code: "+str(requestsResult.status_code))
 
 ''' request a new access token from remote REST API 
     return access_token and expiration time in seconds
@@ -130,7 +130,7 @@ def checkToken():
         apiItems['expire'] = now + expires_in
 
 ''' get configuration settings '''
-def getSettings(lclSQLcursor):
+def getSettings( lclSQLcursor ):
     checkToken()
     r = requests.get( apiItems['url']+'settings?access_token='+apiItems['accToken'] )
     if not r.status_code == 200:
@@ -156,7 +156,7 @@ def getApiEvents():
     return r.json()['data'] 
 
 ''' write PowerLog data into remote DB via buildingAPI '''
-def writeApiPowerLog(watts, boiler_on, heating_on, tstamp):
+def writeApiPowerLog( watts, boiler_on, heating_on, tstamp ):
     # set token expiration time to now, so that 
     # we have to request a new token immediately for the buildingAPI
     checkToken()
@@ -171,7 +171,7 @@ def writeApiPowerLog(watts, boiler_on, heating_on, tstamp):
         handleAPIerrors(r, "write power data to")
 
 ''' write TempLog data into remote DB via buildingAPI '''
-def writeApiTempLog(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on):
+def writeApiTempLog( outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on ):
     checkToken()
     payload = { # create payload data as dict for buildingAPI
         'mainroom'     : mainTemp,
@@ -187,7 +187,7 @@ def writeApiTempLog(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on
         handleAPIerrors(r, "write tempLog data t")
 
 ''' write BuildingLog data into remote DB via buildingAPI '''
-def writeApiBuildingLog(what, where, text):
+def writeApiBuildingLog( what, where, text ):
     checkToken()
     payload = { # create payload data as dict for buildingAPI
         'what'         : what,
@@ -211,7 +211,7 @@ def writeApiEventLog( id, estOn='00:00', actOn='00:00', actOff='00:00' ):
         handleAPIerrors(r, "write eventLog data to")
 
 ''' set nextdate of a certain event (once an event is over) '''
-def writeApiEventNextdate(id, nextdate):
+def writeApiEventNextdate( id, nextdate ):
     checkToken()
     print("# "*90)
     payload = { 'access_token' : apiItems['accToken']  }
@@ -220,7 +220,7 @@ def writeApiEventNextdate(id, nextdate):
         handleAPIerrors(r, "write event nextdate via")
 
 ''' update status of a certain event (after changes were made) '''
-def updateApiEventStatus(id, status):
+def updateApiEventStatus( id, status ):
     checkToken()
     payload = { 'access_token' : apiItems['accToken']  }
     r = requests.patch( apiItems['url']+'events/'+str(id)+'/status/'+status, data=payload )
