@@ -77,6 +77,8 @@ if sys.platform[:5] == 'linux':
     onLinux          = True
 
 
+logDir = ".\\Logfiles\\"
+
 
     
 #------------------------------------------------------------------------
@@ -95,7 +97,6 @@ else:
     print("No debugging active!")
 
 now = datetime.datetime.now()           # determine log file name
-logDir = ".\\Logfiles\\"
 logName = "buildingControlLog.txt";
 if onLinux: logDir = "./Logfiles/";
 
@@ -108,6 +109,7 @@ Logger.addHandler(stderr_log_handler)
 formatter = logging.Formatter('%(asctime)s-%(name)s-%(levelname)s: %(message)s')
 file_log_handler.setFormatter(formatter)
 stderr_log_handler.setFormatter(formatter)
+
 
 
 

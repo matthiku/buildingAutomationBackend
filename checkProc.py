@@ -420,7 +420,8 @@ def checkPythonProgs(retry=False):
         if not pid in pythonProgs and pid != myPID:
             print( pids )
             print( "Failing to identify this python process! - ", pid )
-            print( subprocess.check_output("ps axf | grep python", shell=True).decode("utf-8") )
+            if onLinux:
+                print( subprocess.check_output("ps axf | grep python", shell=True).decode("utf-8") )
     if oneoff: return           # stop here for one-off (manual) call 
     # Now test if exactly 2 other Python progs are running,
     # but give them another chance (e.g. while they are restarting itself due to source code change)

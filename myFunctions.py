@@ -92,11 +92,20 @@ apiItems = {
                      }
 } 
 
-''' TODO '''
+''' write HTML code returned from failed API call in to a file '''
+def writeErrorHtml(html):
+    fname = os.path.join( logDir, 'APIerror.html' )
+    fhandle = open(fname, 'w')
+    fhandle.write(html)
+    fhandle.close()
+
+''' Handle unexpected data returned from API call '''
 def handleAPIerrors(requestsResult, activity):
-    print(r.status_code)
-    if r.status_code  < 500: Logger.info( r.json() )
-    else:                    Logger.info( r.text )
+    if (r.text)[:15] == "<!DOCTYPE html>": # API call returned a HTML page!
+        writeErrorHtml(r.text)
+    else:
+        if   r.status_code  < 500: Logger.info( r.json() )
+        else:                      Logger.info( r.text )
     Logger.error("Error when trying to " + activity + \
         " remote DB via RESTful API! Status code: "+str(r.status_code))
 
