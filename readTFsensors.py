@@ -24,10 +24,6 @@
 #                                                                               |
 #                                                                               |
 
-sqlSrv = 'localhost'
-sqlUsr = 'james'
-sqlPwd = ''
-sqlDB  = 'Monitoring'
 
 # IP address (and port) of computer to which TF modules are physically connected to
 HOST = "localhost"
@@ -72,6 +68,19 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 
 
+# determine host OS ('win32' or 'linux2')
+onWindows = False
+onLinux   = False
+if sys.platform     == 'win32':
+    onWindows        = True
+if sys.platform[:5] == 'linux':
+    onLinux          = True
+
+
+logDir = ".\\Logfiles\\"
+
+ 
+    
 #------------------------------------------------------------------------
 #                                   Logging 
 #------------------------------------------------------------------------
@@ -79,19 +88,19 @@ import logging
 #import logging.config
 #logging.config.fileConfig('logging.conf')
 global Logger
-Logger = logging.getLogger(__file__)    # create logger obj with a name of this module
+Logger = logging.getLogger("buildingControl")    # create logger obj with a name of this module
 if len(sys.argv) > 1:
     Logger.setLevel(logging.DEBUG) 
+    print("Debugging is active!")
 else:
-    Logger.setLevel(logging.INFO) 
+    Logger.setLevel(logging.INFO)
+    print("No debugging active!")
 
 now = datetime.datetime.now()           # determine log file name
-logDir = "Logfiles"
 logName = "buildingControlLog.txt";
-if sys.platform[:5] == 'linux':
-    logDir = "./Logfiles/";
+if onLinux: logDir = "./Logfiles/";
 
-file_log_handler = logging.FileHandler( os.path.join(logDir, logName) )
+file_log_handler = logging.FileHandler( os.path.join(logDir, logName) ) 
 Logger.addHandler(file_log_handler)
 
 stderr_log_handler = logging.StreamHandler()    # log to the console as well
@@ -100,6 +109,9 @@ Logger.addHandler(stderr_log_handler)
 formatter = logging.Formatter('%(asctime)s-%(name)s-%(levelname)s: %(message)s')
 file_log_handler.setFormatter(formatter)
 stderr_log_handler.setFormatter(formatter)
+
+
+
 
 # connect to the (local) mySQL DB on the Raspi
 lclConn  = getMySQLconn()
