@@ -94,10 +94,12 @@ apiItems = {
 
 ''' write HTML code returned from failed API call in to a file '''
 def writeErrorHtml(html):
-    fname = os.path.join( 'Logfiles', 'APIerror.html' )
-    fhandle = open(fname, 'w')
-    fhandle.write(html)
-    fhandle.close()
+    try:
+        fname = os.path.join( 'Logfiles', 'APIerror.html' )
+        fhandle = open(fname, 'w')
+        fhandle.write(html)
+        fhandle.close()
+    except: return
 
 ''' Handle unexpected data returned from API call '''
 def handleAPIerrors(requestsResult, activity):
@@ -215,7 +217,7 @@ def writeApiEventNextdate( id, nextdate ):
     checkToken()
     print("# "*90)
     payload = { 'access_token' : apiItems['accToken']  }
-    r = requests.patch( apiItems['url']+'events/'+id+'/nextdate/'+nextdate, data=payload )
+    r = requests.patch( apiItems['url']+'events/'+str(id)+'/nextdate/'+nextdate, data=payload )
     if not r.status_code == 202: # 201=new record created
         handleAPIerrors(r, "write event nextdate via")
 
