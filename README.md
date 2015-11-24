@@ -6,7 +6,7 @@ This module reads/manipulates the various sensors and actors and monitors the ev
 
 Using -
 * [Tinkerforge](http://www.tinkerforge.com/en) modules
-* Raspberry Pi with RaspBian or Windows PC
+* Raspberry Pi with [RaspBian](http://raspbian.org/) or Windows PC
 * Python 3.x scripts
 * Shell scripts for Linux
  
