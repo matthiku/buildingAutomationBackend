@@ -8,6 +8,7 @@ Using -
 * [Tinkerforge](http://www.tinkerforge.com/en) modules
 * Raspberry Pi with RaspBian or Windows PC
 * Python 3.x scripts
+* Shell scripts for Linux
  
 See [this diagram](https://github.com/matthiku/buildingAutomationBackend/blob/master/Hardware%20Layout.png) for an overview of the modules used
 
