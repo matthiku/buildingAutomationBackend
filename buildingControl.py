@@ -195,6 +195,7 @@ def manageOnlineEvents( ):
     # get all TANs from remote DB and check for modifications
     # -------------------------------------------------------------------
     remEvents = getApiEvents()
+    lclTAN    = getCurrentTAN(lclSQLcursor)
     remTAN    = []   # array of all remote TANs
     modified  = False
     for ev in remEvents:
@@ -204,7 +205,7 @@ def manageOnlineEvents( ):
             modified = True
         # send TAN via email
         if ev['status'] == "TANREQ" : 
-            sendEmail(ADMIN, "current TAN is "+lclTAN, "current TAN was requested")
+            sendEmail(ADMIN, "current TAN is "+str(lclTAN), "current TAN was requested")
             return  # no further action needed in this round...
     # no action needed if there is no remote update
     if not modified: 
@@ -214,12 +215,11 @@ def manageOnlineEvents( ):
     # -------------------------------------------------------------------
     # look for valid TAN in remote DB 
     # -------------------------------------------------------------------
-    lclTAN    = str( getCurrentTAN(lclSQLcursor) )
     if not lclTAN in remTAN: 
         notifyAll( "Changes were made to online Events DB but TAN " + \
-            lclTAN + " was not found in remote DB: " + str(remTAN) )
+            str(lclTAN) + " was not found in remote DB: " + str(remTAN) )
         return
-    Logger.debug( lclTAN + " - TAN was found in remote DB: " + str(remTAN) )
+    Logger.debug( str(lclTAN) + " - TAN was found in remote DB: " + str(remTAN) )
     
     # get the id of the modified record and set status=OK on remote DB via API
     for ev in remEvents:
@@ -756,9 +756,9 @@ sql = "INSERT INTO `building_power` (`power`, `boiler_on`, `heating_on`) VALUES 
 executeSQL( lclSQLcursor, sql, "write first reading into" )
 
 
-#--------------------------------------------------------
-# frist write of power data into remote DB via buildingAPI
-#--------------------------------------------------------
+#------------------=========--------------------------------------
+# initial recording of power data into remote DB via buildingAPI
+#---------------------------=========-----------------------------
 now = datetime.datetime.now()
 writeApiPowerLog(watts, boiler_on, heating_on, now)
 
@@ -780,9 +780,11 @@ exitCode = 0
 
 
 
-#--------------------------------------------------------
-# endless loop in the main section
-#--------------------------------------------------------
+#======================================================================#
+#
+#                              MAIN action
+#
+#======================================================================#
 if __name__ == '__main__':
 
     oldWatts = watts    # keep track of previous value to react on changes
@@ -836,7 +838,7 @@ if __name__ == '__main__':
             prev    = now - datetime.timedelta(seconds=1)  # get timestamp from previous reading
             boiler_on, heating_on = checkHeatingStatus(tfConn)
             # write both, the old and new value into the DB using the buildingAPI method 
-            writeApiPowerLog( str(round(oldWatts,1)), boiler_on, heating_on, prev )
+            #writeApiPowerLog( str(round(oldWatts,1)), boiler_on, heating_on, prev )
             writeApiPowerLog(                  watts, boiler_on, heating_on,  now )
 
             # retain the previous value
@@ -913,12 +915,18 @@ if __name__ == '__main__':
                 # if program was restarted, we do not know what the heating status is, so we have to check the TF switches!
                 if boiler_on and heating_on: watch['heatingActive'] = True
                 
+                #-------------------------------------------------------------------------------------------------
                 # if time to event start is shorter than pre-heating timespan , we need to switch heating on:
+                #-------------------------------------------------------------------------------------------------
                 if toStart < heatingDuration and sinceEnd < 0 and not boiler_on:
                     # we need to switch on heating !!
                     watch['heatingActive'] = True
-                    notifyAll( "Trying to switch on heating. (toStart, heatingDuration, sinceEnd) \n"+\
-                                            formatSeconds(toStart)+' - '+formatSeconds(heatingDuration)+' - '+formatSeconds(sinceEnd) )
+                    notifyAll( 
+                                "Trying to switch on heating for " + todaysEvent + \
+                                ".\n (toStart, heatingDuration, sinceEnd) \n" + \
+                                formatSeconds(toStart)+' - '+formatSeconds(heatingDuration)+' - '+formatSeconds(sinceEnd) + \
+                                "\nCurrent room temp.: " + str(currentRoomTemp) + " Target room temp.: " + str(targetTemp)
+                             )
                     switchHeating( lclSQLcursor, True, True, eventID, online_id )
                 
                 # if heating is already on but pre-heating timespan shorter than time until event starts, switch off heating...
@@ -950,9 +958,15 @@ if __name__ == '__main__':
                                 formatSeconds(toStart) + ' ' + str(currentRoomTemp) + ' ' + str(outdoorTemp) )
                     switchHeating( lclSQLcursor, True, False, eventID, online_id )
                 
+                #--------------------------------------------------------------------------------------
                 # switch boiler off 20 minutes after event ended
+                #--------------------------------------------------------------------------------------
                 if sinceEnd > 900 and boiler_on:
-                    notifyAll("Trying to switch OFF heating. (sinceEnd - boiler_on )"+formatSeconds(sinceEnd)+' - '+str(boiler_on) )
+                    notifyAll(
+                            "Trying to switch OFF heating for " + todaysEvent + \
+                            "\n(sinceEnd, boiler on?" + formatSeconds(sinceEnd) + ' - ' + str(boiler_on) + \
+                            ")\nCurrent room temp.: " + str(currentRoomTemp) + " Target room temp.: " + str(targetTemp)
+                        )
                     switchHeating( lclSQLcursor, False, False, eventID, online_id)
                     watch['heatingActive'] = False
                     writeNextEventDate( lclSQLcursor, eventID, online_id )

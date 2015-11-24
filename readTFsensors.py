@@ -97,7 +97,7 @@ else:
     print("No debugging active!")
 
 now = datetime.datetime.now()           # determine log file name
-logName = "buildingControlLog.txt";
+logName = "readTFsensors.txt";
 if onLinux: logDir = "./Logfiles/";
 
 file_log_handler = logging.FileHandler( os.path.join(logDir, logName) ) 

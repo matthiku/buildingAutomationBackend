@@ -418,7 +418,9 @@ def checkPythonProgs(retry=False):
             print(pythonProgs[pid][0].rjust(16),'started',formatSeconds(pythonProgs[pid][1]).rjust(9)+' ago, PID is', pid)
             okProgs+=1
         if not pid in pythonProgs and pid != myPID:
-            print( pids )
+            print( "running:", pids )
+            print( "expected:", pythonProgs )
+            print( "myPid:", myPID )
             print( "Failing to identify this python process! - ", pid )
             if onLinux:
                 print( subprocess.check_output("ps axf | grep python", shell=True).decode("utf-8") )

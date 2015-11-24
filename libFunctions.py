@@ -1,21 +1,14 @@
 #! /usr/local/bin/python
 # -*- coding: utf-8 -*-  
 
-import sys;
-import os;
-import traceback
-import logging
+import sys, os, traceback, logging
+import subprocess, re, psutil
+import pymysql, ftplib
 
-import subprocess
-import re
-import psutil
-import pymysql
-import ftplib
-import datetime
-import calendar
+import datetime, time, calendar
 import json
 
-import requests, time   # handling http (for weather data)
+import requests         # handling http (for weather data)
 import telnetlib        # (for dovado router/home automation)
 
 from tinkerforge.ip_connection            import IPConnection
@@ -29,8 +22,9 @@ from tinkerforge.bricklet_ambient_light   import AmbientLight
 from multiprocessing import Process
 
 # for WOL
-import socket
-import struct
+import socket, struct
+
+
 
 # get access to the logger
 Logger = logging.getLogger("buildingControl") 
@@ -68,6 +62,7 @@ TF_HEATSW_UID = '6D9'
 DOV_HOST = "192.168.0.1"
 DOV_PORT = 6435
 
+
 def getLclSettings(lclSQLcursor):
     executeSQL( lclSQLcursor, "SELECT `key`,`value` FROM `settings`;" )
     allSettings = lclSQLcursor.fetchall()
@@ -76,6 +71,8 @@ def getLclSettings(lclSQLcursor):
         settings[item[0]] = item[1]
     settings['source'] = "local"
     return settings
+
+
 
 ''' Building API ---------------------------------------------------------- START
 '''
@@ -92,6 +89,7 @@ apiItems = {
                      }
 } 
 
+
 ''' write HTML code returned from failed API call in to a file '''
 def writeErrorHtml(html):
     try:
@@ -100,6 +98,7 @@ def writeErrorHtml(html):
         fhandle.write(html)
         fhandle.close()
     except: return
+
 
 ''' Handle unexpected data returned from API call '''
 def handleAPIerrors(requestsResult, activity):
@@ -111,6 +110,7 @@ def handleAPIerrors(requestsResult, activity):
     Logger.error("Error when trying to " + activity + \
         " remote DB via RESTful API! Status code: "+str(requestsResult.status_code))
 
+
 ''' request a new access token from remote REST API 
     return access_token and expiration time in seconds
 '''
@@ -121,6 +121,7 @@ def getToken():
         return r.json()['expires_in']
     print(r.text)    
 
+
 ''' access token handling '''
 def checkToken():    
     now = datetime.datetime.now().timestamp()
@@ -130,6 +131,7 @@ def checkToken():
         expires_in = getToken()
         # set new expiration date
         apiItems['expire'] = now + expires_in
+
 
 ''' get configuration settings '''
 def getSettings( lclSQLcursor ):
@@ -148,6 +150,7 @@ def getSettings( lclSQLcursor ):
     settings['source'] = "remote"
     return settings
 
+
 ''' get online event table '''
 def getApiEvents():
     r = requests.get(apiItems['url']+'events')
@@ -156,6 +159,7 @@ def getApiEvents():
         return
     # returned data is in JSON format labelled 'data'
     return r.json()['data'] 
+
 
 ''' write PowerLog data into remote DB via buildingAPI '''
 def writeApiPowerLog( watts, boiler_on, heating_on, tstamp ):
@@ -188,6 +192,7 @@ def writeApiTempLog( outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_o
         print(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on)
         handleAPIerrors(r, "write tempLog data t")
 
+
 ''' write BuildingLog data into remote DB via buildingAPI '''
 def writeApiBuildingLog( what, where, text ):
     checkToken()
@@ -199,6 +204,7 @@ def writeApiBuildingLog( what, where, text ):
     r = requests.post(apiItems['url']+'buildinglog', data=payload)
     if not r.status_code == 201: # 201=new record created
         handleAPIerrors(r, "write buildingLog data to")
+
 
 def writeApiEventLog( id, estOn='00:00', actOn='00:00', actOff='00:00' ):
     checkToken()
@@ -212,6 +218,7 @@ def writeApiEventLog( id, estOn='00:00', actOn='00:00', actOff='00:00' ):
     if not r.status_code == 201: # 201=new record created
         handleAPIerrors(r, "write eventLog data to")
 
+
 ''' set nextdate of a certain event (once an event is over) '''
 def writeApiEventNextdate( id, nextdate ):
     checkToken()
@@ -220,6 +227,7 @@ def writeApiEventNextdate( id, nextdate ):
     r = requests.patch( apiItems['url']+'events/'+str(id)+'/nextdate/'+nextdate, data=payload )
     if not r.status_code == 202: # 201=new record created
         handleAPIerrors(r, "write event nextdate via")
+
 
 ''' update status of a certain event (after changes were made) '''
 def updateApiEventStatus( id, status ):
@@ -259,6 +267,7 @@ def formatSeconds( secs, long=True ):
     if long: return (minus + str(secs//3600)+'h'+('0'+str(secs%3600//60))[-2:]+'m'+('0'+str(secs%60))[-2:]+'s').rjust(10)
     return str(secs//3600)+':'+('0'+str(secs%3600//60))[-2:]
 
+
 def hilite( string, color='none', bold=False ):
     ''' highlight text (but only if on a TTY device and not a file) '''
     if not sys.stdout.isatty() or sys.platform == 'win32': return str(string)
@@ -270,10 +279,12 @@ def hilite( string, color='none', bold=False ):
     if bold:              attr.append('1')
     return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), str(string))
  
+
 def cjust( string, length ):
     ''' return a centered string of the given length padded with spaces on both sides '''
     pass
-    
+   
+
 def maxList( list, newElem, max ):
     list.append(newElem)
     if len(list) > max:
@@ -282,17 +293,21 @@ def maxList( list, newElem, max ):
         list.reverse()
     return list;
 
+
 def getListAvg( list ):
     return round( sum(list) / len(list) )
 
+
 def rnd5( n ):
     return round(n*10/5)*5/10
+
 
 def getTmStmp():
     ''' creates human-readable date (today) followed by the timestamp '''
     now = datetime.datetime.now()
     tms = now.strftime("%Y-%m-%d %H:%M:%S")
     return str(tms) + " " + str(round( datetime.datetime.timestamp( now )) )
+
 
 def add_month(date):
     '''add one month to date, maybe falling to last day of month
@@ -317,6 +332,8 @@ def add_month(date):
         return candidate
 
 
+
+
 ''' ------------- environment functions --------------------- '''
 def computerOnline( name ):
     ''' Check if a computer is online (using ping) '''
@@ -338,7 +355,8 @@ def computerOnline( name ):
     if p_status == 0: 
         return True
     return False
-    
+  
+
 def wake_on_lan( macaddress ):
     """ Wake on LAN 
     Switches on remote computers using WOL. """
@@ -365,6 +383,7 @@ def wake_on_lan( macaddress ):
     result = sock.sendto(send_data, ('<broadcast>', 7))    
     Logger.info('WOL - Result from trying to wake_on_Lan %s was %s.' %(macaddress, str(result),) )
 
+
 def getPID( name ):
     #
     # returns an array of pids (or an empty array) 
@@ -387,6 +406,7 @@ def getPID( name ):
             pids.append( words[1] )
     return pids
 
+
 def schTaskIsRunning( name ):
     ''' Check if a certain scheduled task is running '''
     # only works on Windows
@@ -405,6 +425,7 @@ def schTaskIsRunning( name ):
         return True
     return False
 
+
 def isRunning( procName ):
     ''' check if a certain program (process) is running
         input:  process name or parts thereof
@@ -416,6 +437,7 @@ def isRunning( procName ):
             if procName in i.name(): return True
         except psutil.AccessDenied: pass
     return False
+
 
 def get_processes_running( processname ):
     ''' return the number of processes that are running with the given name '''
@@ -434,6 +456,7 @@ def get_processes_running( processname ):
         print(processname + " is NOT running!" )
     return isRunning
 
+
 def internet_on():
     import urllib
     url='http://google.com'
@@ -444,6 +467,8 @@ def internet_on():
     except: pass
     Logger.error("=== No connection to the Internet! ===")
     return False
+
+
 
 
 ''' ---------------- notifications ------------------ '''
@@ -483,6 +508,7 @@ def sendEmail( destination, subject, content ):
         Logger.info( "error when trying to send email: " + errmsg );
         sys.exit( "mail failed; %s" + errmsg ) # give a error message
 
+
 def broadcast( text ):
     ''' Broadast messages to other terminals '''
     now = datetime.datetime.now()
@@ -496,11 +522,14 @@ def broadcast( text ):
         print(lines[index])
         index += 1
 
+
 def notifyAll( text, subject="Building Control Notification" ):
     ''' notify via logger, terminal and email '''
     Logger.info(text)
     broadcast(text)
     sendEmail(admin, subject, text)
+
+
 
 
 def uploadFTP( file ):
@@ -542,6 +571,8 @@ def uploadFTP( file ):
     return        
 
 
+
+
 ''' ---------------------- Get TINKERFORGE objects ------------------------ '''
 def getTFconn( HOST=TF_HOST, PORT=TF_PORT ):
     try:
@@ -559,6 +590,7 @@ def getTFconn( HOST=TF_HOST, PORT=TF_PORT ):
         sendEmail(admin,'getPower.py', 'Tinkerforge unable to connect! ' + errmsg )
         sys.exit(-1) # should cause rPi to reboot
     return ipcon
+
 def getTFLCD( ipcon, UID=TF_LCD_UID ):
     try:
         lcd = LCD20x4(UID, ipcon)
@@ -567,6 +599,7 @@ def getTFLCD( ipcon, UID=TF_LCD_UID ):
         Logger.info( 'Tinkerforge LCD object creation failed ... ' + errmsg );
         sendEmail(admin,'getPower.py', 'Tinkerforge LCD object creation failed ... ' + errmsg )
     return lcd
+
 def getMotion( ipcon, UID=TF_MOTION_UID ):
     try:
         md = MotionDetector(UID, ipcon)
@@ -575,6 +608,7 @@ def getMotion( ipcon, UID=TF_MOTION_UID ):
         Logger.info( 'Tinkerforge MotionDetector object creation failed ... ' + errmsg );
         sendEmail(admin,'getPower.py', 'Tinkerforge MotionDetector object creation failed ... ' + errmsg )
     return md
+
 def getTFsensors( ipcon, UID,type='TEMP' ):
     result = ''
     try:
@@ -590,6 +624,8 @@ def getTFsensors( ipcon, UID,type='TEMP' ):
     if result == '':
         Logger.Warning( "Error! Wrong TYPE parameter for getTFsensors function - " + type ) 
     return result
+
+
 
 
 ''' ---------------------- Retrieve physical environment values ---------------- '''
@@ -640,6 +676,7 @@ def getLastTempHumid():
     except:
         return timestampNow, 9.9
 
+
 def getCurrentPower( httpSession ):
     ''' Get current POWER consumption
     read the WATT value from the YouLess device's webpage '''
@@ -655,6 +692,7 @@ def getCurrentPower( httpSession ):
         Logger.exception( "Cannot get or decode %s: %s" % (youLessURL, str(e)) )
     return val
 
+
 def checkHeatingStatus( ipcon, UID=TF_HEATSW_UID, writeLog=False ):
     ''' Check if heating has been switched on at the moment '''
     try:
@@ -669,6 +707,7 @@ def checkHeatingStatus( ipcon, UID=TF_HEATSW_UID, writeLog=False ):
     if status[1]: stat1='1' 
     if writeLog:  open("./Logfiles/DRstatus.log","w").write( stat0+', '+stat1+" updated "+getTmStmp() )
     return ( status[0], status[1] )
+
 
 def getWeather(getAll=False):
     ''' cget current outdoor temp '''
@@ -688,6 +727,8 @@ def getWeather(getAll=False):
         getAll = r.json()
         return temp, getAll['wind']['speed'], getAll['wind']['deg']
     return temp 
+
+
 
 
 
@@ -726,6 +767,7 @@ def switchHeating( mySQLdbCursorObj, sw1, sw2, eventID, online_id, UID=TF_HEATSW
     # and remote
     writeApiEventLog( online_id, actOn=actualOn, actOff=actualOff )   
 
+
 def controlLights( mySQLdbCursorObj, which, onOrOff ):
     ''' Control Lights via Dovado Router Web console '''
     user = b'admin'
@@ -760,6 +802,7 @@ def controlLights( mySQLdbCursorObj, which, onOrOff ):
 
 
 
+
 ''' ========================== LOCAL DATABASE activity ========================= '''
 
 ''' --------------------- generic ----------------- '''
@@ -776,6 +819,7 @@ def getMySQLconn( ):
     # return the mySQL connection object
     return mySqlConn
 
+
 def executeSQL(mySQLdbCursorObj, sqlCmd, taskDescription="access" ):
     ''' execute local SQL command '''
     Logger.debug("Trying to execute sql command: "+sqlCmd)
@@ -787,6 +831,7 @@ def executeSQL(mySQLdbCursorObj, sqlCmd, taskDescription="access" ):
     except Exception as e:
         errmsg = str(traceback.format_exception( *sys.exc_info() ));
         Logger.error( sqlCmd + "Unable to " + taskDescription + " local DB!" + errmsg  + " RESULT was: " + str(result) )
+
 
 
 ''' ----------------- specific ------------------ '''
@@ -802,6 +847,7 @@ def getCurrentTAN( mySQLdbCursorObj ):
         Logger.error("getCurrentEvents - Unable to open/read local DB!" + errmsg )
         return
     return mySQLdbCursorObj.fetchone()[0]
+
 
 def checkCurrentEvent( mySQLdbCursorObj ):
     ''' 
@@ -850,6 +896,7 @@ def checkCurrentEvent( mySQLdbCursorObj ):
     
     return '', False, 0, 0, 0, 0, 0, 0
 
+
 def writeNextEventDate( mySQLdbCursorObj, eventID, online_id ):
     '''once an event is over, this function writes the next event date into the local and remote DBs'''
     # get event details:
@@ -889,6 +936,7 @@ def writeNextEventDate( mySQLdbCursorObj, eventID, online_id ):
     writeApiEventNextdate( online_id, str(nextEventDate) )
     return
 
+
 def resetWOLinSettings( mySQLdbCursorObj ):
     '''  after a forced WOL, reset wol field in settings table  '''
     try:
@@ -897,6 +945,7 @@ def resetWOLinSettings( mySQLdbCursorObj ):
         Logger.exception('Unable to reset WOL to 0 in settings table from DB!')
         return 1
     Logger.info("WOL setting was resetted.")
+
 
 def insertNewEvent( mySQLdbCursorObj, ev, newTAN ):
 
@@ -908,8 +957,8 @@ def insertNewEvent( mySQLdbCursorObj, ev, newTAN ):
     # insert the update as a new event
     sql = "INSERT INTO `building_events` ( "
     sql+= "`status`,`online_id`,`seed`,`weekday`,`start`,`end`,`title`,`repeats`,`nextdate`,`rooms`,`targetTemp`) VALUES ( 'OK', '"
-    sql+= ev['id'] + "', '"
-    sql+= ev['seed'] + "', '"
+    sql+= str(ev['id']) + "', '"
+    sql+= str(ev['seed']) + "', '"
     sql+= ev['weekday'] + "', '"
     sql+= ev['start'] + "', '"
     sql+= ev['end'] + "', '"
@@ -917,13 +966,14 @@ def insertNewEvent( mySQLdbCursorObj, ev, newTAN ):
     sql+= ev['repeats'] + "', '"
     sql+= ev['nextdate'] + "', '"
     sql+= ev['rooms'] + "', '"
-    sql+= ev['targetTemp'] + "' );"
+    sql+= str(ev['targetTemp']) + "' );"
     executeSQL( mySQLdbCursorObj, sql, "insert new/updated event into" )
     Logger.info("New event inserted locally: " + str(ev))
 
     # create a new TAN number (seed) and populate the local DB table with it
     sqlCMD = "UPDATE `building_events` SET `seed`=" + str(newTAN) + "; "
     executeSQL( mySQLdbCursorObj, sqlCMD, "write new TAN into" )
+
 
 def reportEstimateOn( mySQLdbCursorObj, timeDiff, eventID, online_id ):
     ''' report estimated heating switch-on time to DB '''
