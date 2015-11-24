@@ -10,7 +10,8 @@ Using -
 * Python 3.x scripts
 * Shell scripts for Linux
  
-See [this diagram](https://github.com/matthiku/buildingAutomationBackend/blob/master/Hardware%20Layout.png) for an overview of the modules used
+![this diagram](https://github.com/matthiku/buildingAutomationBackend/blob/master/Hardware%20Layout.png)
+An overview of the modules used
 
 It's the back-end part of a 3-tiered project called "Building Automation, Control and Monitoring":
 >[buildingAutomationBackend](https://github.com/matthiku/buildingAutomationBackend)  < - > [buildingAPI](https://github.com/matthiku/buildingAPI)  < - > [buildingAutomationFrontend](https://github.com/matthiku/buildingAutomationFrontend)
