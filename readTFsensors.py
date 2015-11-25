@@ -88,7 +88,7 @@ import logging
 #import logging.config
 #logging.config.fileConfig('logging.conf')
 global Logger
-Logger = logging.getLogger("buildingControl")    # create logger obj with a name of this module
+Logger = logging.getLogger("readTFsensors")    # create logger obj with a name of this module
 if len(sys.argv) > 1:
     Logger.setLevel(logging.DEBUG) 
     print("Debugging is active!")

@@ -68,6 +68,20 @@ from libFunctions import *
 
 
 
+
+# Connect to the local mySQL DB
+lclConn      = getMySQLconn()
+lclSQLcursor = lclConn.cursor()
+
+
+
+# get online configuration settings
+settings = getSettings(lclSQLcursor)
+
+
+
+
+
 # determine host OS ('win32' or 'linux2')
 onWindows = False
 onLinux   = False
@@ -139,12 +153,12 @@ TF_FRONTEMP_UID = '6Jm'     # frontroom temp
 TF_HEATTEMP_UID = 'bSC'     # heating water temp
 TF_LIGHT_UID    = '7dw'     # light sensor
 
-ADMIN  = 'church.ennis@gmail.com'   # recipient of warning/error emails
+ADMIN  = settings['adminEmail']   # recipient of warning/error emails
 
 
 # for WOL, we need MAC address of AVROOM PC 
 #PC_MAC_ADDR = '00:1e:58:3e:eb:30'
-PC_MAC_ADDR = '00-19-B9-10-C5-98'
+PC_MAC_ADDR = settings['pcMACaddr'] # '00-19-B9-10-C5-98' AVROOM pc
 
 
 # control file containing a timestamp and the last action (e.g. light on or off)
@@ -314,10 +328,10 @@ def getPowerProfile( liste ):
         
         probability = max(frProb,mlProb,pcProb)
         
-        # save profile for further analysis
-        with open( pwrProfileLog, "a") as f:
-            f.write( getTmStmp()+" Cur.Pwr("+str(liste[-1])+") Suspect("+found+", "+str(probability)+'%) '+str(profl)+"\r\n" )
-            f.close()
+        # save profile for further analysis  ###### DEACTIVATED as of 25-11-2015 ########
+        #with open( pwrProfileLog, "a") as f:
+        #    f.write( getTmStmp()+" Cur.Pwr("+str(liste[-1])+") Suspect("+found+", "+str(probability)+'%) '+str(profl)+"\r\n" )
+        #    f.close()
     
     return found, probability, profl
             
@@ -693,18 +707,6 @@ listSize  = 200  # for list of recent power readings
 
 
 
-# Connect to the local mySQL DB
-lclConn      = getMySQLconn()
-lclSQLcursor = lclConn.cursor()
-
-
-
-# get online configuration settings
-settings = getSettings(lclSQLcursor)
-
-
-
-
 # Connect to the TinkerForge modules
 try:
     tfConn = getTFconn()        # Tinkerforge connection
@@ -833,7 +835,7 @@ if __name__ == '__main__':
         #---------------------------------------------------------------------------------------------------
         # only write to REMOTE DB when value change is bigger than 5 Watt! 
         #---------------------------------------------------------------------------------------------------
-        if abs(watts - oldWatts) > 5:  # tolerance changed to 5 Watt
+        if abs(watts - oldWatts) > 2:  # tolerance changed to 5 Watt
             now     = datetime.datetime.now()
             prev    = now - datetime.timedelta(seconds=1)  # get timestamp from previous reading
             boiler_on, heating_on = checkHeatingStatus(tfConn)
@@ -867,6 +869,18 @@ if __name__ == '__main__':
                            "\tPower Alert? "    + str(watch['powerAlert'])       +
                            "\tLowest value: "   + str(watch['lowestWatts'])       )
             
+
+
+
+            #--------------------------------------------------------------------------------------
+            # check if there are online updates for the configuration settings
+            #--------------------------------------------------------------------------------------
+            if count > 0:   # we have done it already before the loop....
+                settings = getSettings(lclSQLcursor)
+
+
+
+
             #======================#
             #   EVENT MANAGEMENT   #
             #======================#---------------------------------------------------------------

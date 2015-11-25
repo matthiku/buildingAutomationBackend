@@ -129,7 +129,7 @@ if sys.platform == 'linux2':
     onLinux   = True
 
 LogFileDir = '/home/pi/Dropbox/BuildingControl/Logfiles/'
-thisDir = '/home/pi/Dropbox/BuildingControl/'
+thisDir    = '/home/pi/Dropbox/BuildingControl/'
 if onWindows:
     thisDir    = os.getcwd()
     LogFileDir = os.getcwd() + '\\Logfiles'
@@ -336,7 +336,9 @@ def printSensorLogFiles():
     if oneGood: return 0
     # return a "warning" if there was not one recent reading
     return 3
-    
+
+
+
 #------------------------------------------------------------------------------------------------------
 # at midnight, all logfiles are synced to Dropbox and this program should end 
 #------------------------------------------------------------------------------------------------------
@@ -452,12 +454,16 @@ def tempCheck():
         broadcast("TempCheck: no sensor replied !")
         return False
 
-       
-        
+
+
+
+
+
 #===================================================================================================================
 # Main progam (loop)
 #===================================================================================================================
 if __name__ == "__main__":
+
         
     if len(sys.argv)>1 and sys.argv[1] == 'loop':
         oneoff = False
@@ -465,6 +471,7 @@ if __name__ == "__main__":
     if len(sys.argv)>1 and sys.argv[1] == 'getTAN': 
         print( "Current TAN is:", getTAN() )
         sys.exit(0)
+
         
     myPID = str(os.getpid())
     # write PID to pid log file
@@ -472,6 +479,7 @@ if __name__ == "__main__":
         PIDfname = os.path.join( LogFileDir, "PID_"+os.path.basename(__file__)+".log" )
         open( PIDfname, "w" ).write( "PID "+myPID+" started "+getTmStmp() )
         broadcast("- my PID is " + myPID)
+
     
     curPath=os.getcwd()     # save current path
     os.chdir(LogFileDir)    # go to logfiles dir
@@ -480,9 +488,12 @@ if __name__ == "__main__":
     oldHeatingStatus = heating_on
     
     warning = 0     # counter for reading warnings
+
     
     while True:
+
         now = datetime.datetime.now()
+
         
         #---------------------------------------------
         # get the latest power and DR switch data
@@ -494,7 +505,8 @@ if __name__ == "__main__":
             if not oldHeatingStatus == heating_on:
                 broadcast("Heating was now switched " + 'on' if heating_on else 'off' )
                 oldHeatingStatus = heating_on
-        
+
+
         #--------------------------------------------------------------------------------
         # read content to sensor log files (one line, containing the latest reading)
         #--------------------------------------------------------------------------------
@@ -507,21 +519,29 @@ if __name__ == "__main__":
             warning=0       # warning counter goes back to 0
         else:                   # any problems and
             warning += points   # points are added to warning counter
-        
+
+
+
         #---------------------------------------------
         # check the running Python processes
         #---------------------------------------------
         checkPythonProgs()
-        
+
+
+
         #---------------------------------------------
         # is there an event today?
         #---------------------------------------------
         getTodaysEvent()
-            
+
+
+
         #---------------------------------------------
         # that's it for manual running of this tool
         #---------------------------------------------
         if oneoff:      sys.exit(0)
+
+
         
         #---------------------------------------------
         # check warning counter
@@ -534,15 +554,21 @@ if __name__ == "__main__":
             else:
                 broadcast(" - reboot due to high warning count: " + str(warning) )
                 sys.exit(1)
-            
+
+
+
+        # check if its source code was updated while the program is running
         checkSourceUpdate()
-        
+
+
         #---------------------------------------------------------
         # at midnight, do some cleanup and roll-up of log files
         #---------------------------------------------------------
         midnightCleanUp()
         
         time.sleep(300)              # wait 5 minutes
+
+
         
     os.chdir(curPath)       # back to current directory
     print('-'*75)

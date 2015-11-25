@@ -7,6 +7,7 @@ import pymysql, ftplib
 
 import datetime, time, calendar
 import json
+import random
 
 import requests         # handling http (for weather data)
 import telnetlib        # (for dovado router/home automation)
@@ -38,9 +39,6 @@ if sys.platform[:5] == 'linux':
     onLinux          = True
 
 
-# URL for power usage reading on the youless monitor
-youLessURL    = 'http://192.168.0.10/a?f=j'
-
 
 # mySQL database access
 lclSqlSrv = 'localhost'
@@ -48,21 +46,37 @@ lqlSqlUsr = 'james'
 lclSqlPwd = ''
 lclSqlDB  = 'monitoring'
 
-admin  = 'church.ennis@gmail.com'
+
+# need to have this now, so that we can read the local settings table
+def getMySQLconn( ):
+    ''' create mySQL database connection '''
+    try:
+        mySqlConn = pymysql.connect(host=lclSqlSrv, port=3306, user=lqlSqlUsr, passwd=lclSqlPwd, db=lclSqlDB)
+    except Exception as e:
+        errmsg = str(traceback.format_exception( *sys.exc_info() ));
+        Logger.info( 'Local mySQL connection failed ... ' + errmsg );
+        sendEmail(admin,'BuildingControl.py', 'local mySQL connection failed ... ' + errmsg )
+        # raise
+        return -1
+    # return the mySQL connection object
+    return mySqlConn
+lclConn = getMySQLconn()
+lclSQLcursor = lclConn.cursor()
+
+def executeSQL(mySQLdbCursorObj, sqlCmd, taskDescription="access" ):
+    ''' execute local SQL command '''
+    Logger.debug("Trying to execute sql command: "+sqlCmd)
+    result=0
+    try:
+        result = mySQLdbCursorObj.execute( sqlCmd )
+        if sqlCmd.split()[0] != "SELECT":
+            mySQLdbCursorObj.execute("COMMIT; ")
+    except Exception as e:
+        errmsg = str(traceback.format_exception( *sys.exc_info() ));
+        Logger.error( sqlCmd + "Unable to " + taskDescription + " local DB!" + errmsg  + " RESULT was: " + str(result) )
 
 
-# Tinkerforge default values
-TF_HOST = 'localhost'
-TF_PORT = 4223
-TF_LCD_UID = 'cYL'
-TF_MOTION_UID = 'iSC'
-TF_HEATSW_UID = '6D9'
-
-# dovado router API
-DOV_HOST = "192.168.0.1"
-DOV_PORT = 6435
-
-
+# define method to read settings from local DB
 def getLclSettings(lclSQLcursor):
     executeSQL( lclSQLcursor, "SELECT `key`,`value` FROM `settings`;" )
     allSettings = lclSQLcursor.fetchall()
@@ -72,6 +86,34 @@ def getLclSettings(lclSQLcursor):
     settings['source'] = "local"
     return settings
 
+# define minimal defaults so that we can run locally without any DB
+# settings = {
+#   'TFheatSwUID'   : '6D9',
+# }
+
+# now read the settings
+settings = getLclSettings( lclSQLcursor )
+
+
+
+admin  = settings['adminEmail']
+
+# URL for power usage reading on the youless monitor
+youLessURL    = settings['youLessURL']
+
+
+# Tinkerforge default values
+TF_HOST       = 'localhost'
+TF_PORT       =  4223
+TF_LCD_UID    = settings['TFLCDUID']      # 'cYL'
+TF_MOTION_UID = settings['TFmotionSwUID'] # 'iSC'
+TF_HEATSW_UID = settings['TFheatSwUID']   # '6D9'
+
+# dovado router API to control lighting
+DOV_HOST = "192.168.0.1"
+DOV_PORT =  6435
+
+
 
 
 ''' Building API ---------------------------------------------------------- START
@@ -79,13 +121,13 @@ def getLclSettings(lclSQLcursor):
 # define global API access data
 apiItems = {
     # access to remote building database
-    'url'          : 'http://c-spot.cu.cc/buildingAPI/public/',
+    'url'          : settings['buildingAPIurl'],
     'expire'       : 0,
     'accToken'     : '',
     'tokenRequest' : {
                         'grant_type'    : 'client_credentials',
                         'client_id'     : 'editor',
-                        'client_secret' : 'RYGnyjKP',
+                        'client_secret' : settings['buildingAPIclient_secret'],
                      }
 } 
 
@@ -133,22 +175,54 @@ def checkToken():
         apiItems['expire'] = now + expires_in
 
 
+def updateSettingsStatus():
+    #/settings/status/OK
+    checkToken()
+    payload = { 'access_token' : apiItems['accToken']  }
+    r = requests.patch( apiItems['url']+'settings/status/OK', data=payload )
+    if not r.status_code == 202: # 201=new record created
+        handleAPIerrors(r, "update settings status on")
+        return
+    print( "Settings STATUS was updated to OK. API call Result: " + str(r.json()) )
+
+
 ''' get configuration settings '''
 def getSettings( lclSQLcursor ):
+
+    # first read the online settings table
     checkToken()
     r = requests.get( apiItems['url']+'settings?access_token='+apiItems['accToken'] )
+    # check the return code
     if not r.status_code == 200:
         handleAPIerrors(r, "read settings table from")
         # since online settngs are unavailable, fall back to local settings backup
+        print("remote settings query failed!")
         return getLclSettings(lclSQLcursor)
+
     # returned data is in JSON format
-    allSettings = r.json()['data']
+    rmtSettings = r.json()['data']
     # create new dict object with all settings as key/value pair
     settings = {}
-    for item in allSettings:
-        settings[item['key']] = item['value']
-    settings['source'] = "remote"
-    return settings
+    for item in rmtSettings:
+        settings[item['key']] = str(item['value'])
+
+    # now check if the remote settings contain a valid PIN
+    lclSettings = getLclSettings(lclSQLcursor)
+    settingsTAN = str(lclSettings['seed'])
+
+    # remote update requested with valid TAN?
+    if settings['seed'] == settingsTAN and settings['status'] == 'UPDATE':
+        # - set remote status back to OK
+        updateSettingsStatus()
+        # - update local settings
+        updateLclSettings(lclSQLcursor, lclSettings, settings)
+        settings['source'] = "remote"
+        return settings
+    
+    if not settings['seed'] == settingsTAN:     # invalid remote TAN ...
+        print("remote settings not accepted, wrong TAN:", settings['seed'] ,"Should be:", settingsTAN)
+
+    return getLclSettings(lclSQLcursor)     # ignore remote settings
 
 
 ''' get online event table '''
@@ -245,7 +319,7 @@ def updateApiEventStatus( id, status ):
 
 
 
-''' ------------- generic functions ----------------'''
+''' -------------  generic helper functions  ----------------'''
 def formatSeconds( secs, long=True ):
     ''' convert seconds (int or str) into NNhNNmNNs or NNmNNs or NNs (string) depending on amount of seconds '''
     try:
@@ -334,7 +408,7 @@ def add_month(date):
 
 
 
-''' ------------- environment functions --------------------- '''
+''' -------------  inner environment sensing  --------------------- '''
 def computerOnline( name ):
     ''' Check if a computer is online (using ping) '''
     if sys.platform[:5] == 'linux':
@@ -471,7 +545,7 @@ def internet_on():
 
 
 
-''' ---------------- notifications ------------------ '''
+''' ----------------  external notifications  ------------------ '''
 def sendEmail( destination, subject, content ):
 
     # don't try this if we are offline
@@ -532,6 +606,7 @@ def notifyAll( text, subject="Building Control Notification" ):
 
 
 
+''' ----------------  special task forces  ------------------ '''
 def uploadFTP( file ):
     ''' upload file via ftp '''
     # check if file exists
@@ -573,7 +648,7 @@ def uploadFTP( file ):
 
 
 
-''' ---------------------- Get TINKERFORGE objects ------------------------ '''
+''' ----------------------  manage TINKERFORGE objects  ------------------------ '''
 def getTFconn( HOST=TF_HOST, PORT=TF_PORT ):
     try:
         ipcon = IPConnection()
@@ -628,7 +703,7 @@ def getTFsensors( ipcon, UID,type='TEMP' ):
 
 
 
-''' ---------------------- Retrieve physical environment values ---------------- '''
+''' ---------------------- physical environment sensing ---------------- '''
 def getLastTempHumid():
     ''' 
     read last line of /var/www/th.log.txt 
@@ -805,36 +880,6 @@ def controlLights( mySQLdbCursorObj, which, onOrOff ):
 
 ''' ========================== LOCAL DATABASE activity ========================= '''
 
-''' --------------------- generic ----------------- '''
-def getMySQLconn( ):
-    ''' create mySQL database connection '''
-    try:
-        mySqlConn = pymysql.connect(host=lclSqlSrv, port=3306, user=lqlSqlUsr, passwd=lclSqlPwd, db=lclSqlDB)
-    except Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.info( 'Local mySQL connection failed ... ' + errmsg );
-        sendEmail(admin,'BuildingControl.py', 'local mySQL connection failed ... ' + errmsg )
-        # raise
-        return -1
-    # return the mySQL connection object
-    return mySqlConn
-
-
-def executeSQL(mySQLdbCursorObj, sqlCmd, taskDescription="access" ):
-    ''' execute local SQL command '''
-    Logger.debug("Trying to execute sql command: "+sqlCmd)
-    result=0
-    try:
-        result = mySQLdbCursorObj.execute( sqlCmd )
-        if sqlCmd.split()[0] != "SELECT":
-            mySQLdbCursorObj.execute("COMMIT; ")
-    except Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.error( sqlCmd + "Unable to " + taskDescription + " local DB!" + errmsg  + " RESULT was: " + str(result) )
-
-
-
-''' ----------------- specific ------------------ '''
 def getCurrentTAN( mySQLdbCursorObj ):
     ''' extract current TAN (or seed code) from events DB '''
     try:
@@ -999,8 +1044,37 @@ def reportEstimateOn( mySQLdbCursorObj, timeDiff, eventID, online_id ):
     # write into remote DB table via API
     writeApiEventLog( online_id, estOn=estOn )
 
+def updateLclSettings( lclSQLcursor, lclSettings, rmtSettings ):
 
+    dirty = False
 
+    for key in rmtSettings:
+        if key in ('status', 'seed'): continue    # no need to copy these keys locally
+        try: 
+            # the following will throw a keyError if the key doesn't exist locally yet
+            if not rmtSettings[key] == lclSettings[key]: 
+                # remote value is different, so update this locally
+                sql = "UPDATE `settings` SET `value`='" +str(rmtSettings[key])+ "' WHERE `key`='" +key+ "'; "
+                executeSQL( lclSQLcursor, sql, "update local settings with online value for key: " + str(rmtSettings[key]) )
+                print( "Successfully updated local settings with online value for key: " + str(rmtSettings[key]) )
+                dirty = True
+
+        except KeyError: 
+            # key does not yet exist in the local DB, so we insert it:
+            sql = "INSERT INTO `settings`( `value`, `key`) VALUES ( '" +str(rmtSettings[key])+ "', '" +key+ "' ); "
+            executeSQL( lclSQLcursor, sql, "update local settings with NEW online value for key: "+str(rmtSettings[key]) )
+            print( "Successfully updated local settings with NEW online value for key: "+str(rmtSettings[key]) )
+            dirty = True
+
+    if dirty:
+        # - generate new random TAN number for local DB
+        newSeed = random.randint(10000,99999)
+        sql = "UPDATE `settings` SET `value`='" +str(newSeed)+ "' WHERE `key`='seed'; "
+        executeSQL( lclSQLcursor, sql, "update local settings with online value for key: " + str(rmtSettings[key]) )
+        print("Remote settings accepted! New seed:", newSeed )
+        sendEmail(admin, 'Building Control Program Settings Updated', "new TAN is " + newSeed)
+    else:
+        print('Remote settings update requested, but no changes found!')
 
 
 ''' ----------------- when called from the command line ----------------- '''
