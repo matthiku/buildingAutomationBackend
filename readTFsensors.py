@@ -129,10 +129,14 @@ def getTmStmp():
     tms = now.strftime("%Y-%m-%d %H:%M:%S")
     return str(tms) + " " + str(round( datetime.datetime.timestamp( now )) )
 
+
+
 # record the data into the database
 def writeToDB(hw,fr,mn):
+
     now = datetime.datetime.now()        
-    timestamp = round( datetime.datetime.timestamp( now )) 
+    timestamp = int( datetime.datetime.timestamp( now )) 
+
     # get newest record from DB
     sql = "SELECT * FROM `sensors` ORDER BY computertime DESC LIMIT 1; "
     count = localSQL.execute(sql)
@@ -140,11 +144,19 @@ def writeToDB(hw,fr,mn):
           last = localSQL.fetchone()
     else: last = (0,0,0,0)
     lastTime = last[0]
+
     # check if old values equals new values
     diff = abs( float(last[1])-float(hw) + float(last[2])-float(fr) + float(last[3])-float(mn) )
     if diff < 0.1: 
-        Logger.debug("Write to DB skipped since no values changed: (OLD)" + str(last) + " (NEW)" + hw + ', ' + fr + ', ' + mn )
+        print("Replacing date of last entry since no values changed: (OLD)" + str(last) + \
+            " (NEW) " + str(timestamp) + hw + ', ' + fr + ', ' + mn )
+        tempSQL = \
+            "UPDATE `sensors` SET `computertime`=" + str(timestamp) + \
+            " WHERE `computertime`=" + str(lastTime) + "; "
+        try:    count=localSQL.execute(tempSQL)
+        except: Logger.exception("Unable to write sensor values to local DB!")    
         return    
+
     # create SQL statement
     # minimum time resolution is one second,
     # so if there's already a record for the same second, we replace the values
@@ -157,6 +169,8 @@ def writeToDB(hw,fr,mn):
     try:    count=localSQL.execute(tempSQL)
     except: Logger.exception("Unable to write sensor values to local DB!")    
     Logger.debug(str(count) + " records written to DB by: "+tempSQL)
+
+
 
 def writeSensFile(which, value, hw, fr, mn):
     # if it's still the initial value, return

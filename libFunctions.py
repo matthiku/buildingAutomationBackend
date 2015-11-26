@@ -219,7 +219,7 @@ def getSettings( lclSQLcursor ):
         settings['source'] = "remote"
         return settings
     
-    if not settings['seed'] == settingsTAN:     # invalid remote TAN ...
+    if settings['status'] == 'UPDATE' and not settings['seed'] == settingsTAN:     # invalid remote TAN ...
         print("remote settings not accepted, wrong TAN:", settings['seed'] ,"Should be:", settingsTAN)
 
     return getLclSettings(lclSQLcursor)     # ignore remote settings
@@ -839,6 +839,7 @@ def switchHeating( mySQLdbCursorObj, sw1, sw2, eventID, online_id, UID=TF_HEATSW
 
     # execute SQL remote and local
     executeSQL( mySQLdbCursorObj, sqlCmd, 'write heating switching time into' )  # local
+    if eventID==0: return   # heating control is on manual, so no event id involved
     # and remote
     writeApiEventLog( online_id, actOn=actualOn, actOff=actualOff )   
 
@@ -1055,26 +1056,27 @@ def updateLclSettings( lclSQLcursor, lclSettings, rmtSettings ):
             if not rmtSettings[key] == lclSettings[key]: 
                 # remote value is different, so update this locally
                 sql = "UPDATE `settings` SET `value`='" +str(rmtSettings[key])+ "' WHERE `key`='" +key+ "'; "
-                executeSQL( lclSQLcursor, sql, "update local settings with online value for key: " + str(rmtSettings[key]) )
-                print( "Successfully updated local settings with online value for key: " + str(rmtSettings[key]) )
+                executeSQL( lclSQLcursor, sql, "update local settings with online value for key: " + str(key) )
+                print( "Successfully updated local settings with online value for key: " + str(key) )
                 dirty = True
 
         except KeyError: 
             # key does not yet exist in the local DB, so we insert it:
             sql = "INSERT INTO `settings`( `value`, `key`) VALUES ( '" +str(rmtSettings[key])+ "', '" +key+ "' ); "
-            executeSQL( lclSQLcursor, sql, "update local settings with NEW online value for key: "+str(rmtSettings[key]) )
-            print( "Successfully updated local settings with NEW online value for key: "+str(rmtSettings[key]) )
+            executeSQL( lclSQLcursor, sql, "update local settings with NEW online value for key: "+str(key) )
+            print( "Successfully updated local settings with NEW online value for key: "+str(key) )
             dirty = True
 
     if dirty:
         # - generate new random TAN number for local DB
-        newSeed = random.randint(10000,99999)
-        sql = "UPDATE `settings` SET `value`='" +str(newSeed)+ "' WHERE `key`='seed'; "
-        executeSQL( lclSQLcursor, sql, "update local settings with online value for key: " + str(rmtSettings[key]) )
+        newSeed = str(random.randint(10000,99999))
+        sql = "UPDATE `settings` SET `value`='" +newSeed+ "' WHERE `key`='seed'; "
+        executeSQL( lclSQLcursor, sql, "update local settings with online value for key: " + str(key) )
         print("Remote settings accepted! New seed:", newSeed )
         sendEmail(admin, 'Building Control Program Settings Updated', "new TAN is " + newSeed)
     else:
         print('Remote settings update requested, but no changes found!')
+
 
 
 ''' ----------------- when called from the command line ----------------- '''

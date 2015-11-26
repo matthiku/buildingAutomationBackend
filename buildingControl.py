@@ -626,7 +626,7 @@ def getTFsensValues(lclSQLcursor):
     dataAge = round( datetime.datetime.timestamp(now) - timestamp )
     if dataAge > 9000:
         exitCode = -1
-        errmsg = "temp sensor values are "+str(dataAge)+" seconds old!! Check readTFsensors.py process!"
+        errmsg   = "temp sensor values are "+str(dataAge)+" seconds old!! Check readTFsensors.py process!"
         notifyAll(errmsg)
     else: exitCode = 0
     babyTemp    = 10 #raspiTemp(lclSQLcursor)       # from temp sensor on Raspberry Pi ----CURRENTLY OOO----
@@ -881,12 +881,26 @@ if __name__ == '__main__':
 
 
 
+            #--------------------------------------------------------------------------------------
+            # MANUAL heating control
+            #--------------------------------------------------------------------------------------
+            if settings['heating'] == 'ON':
+                switchHeating( lclSQLcursor, True, True, 0, 0 )
+
+            if settings['heating'] == 'OFF':
+                switchHeating( lclSQLcursor, False, False, 0, 0 )
+
+
+
+
+
             #======================#
             #   EVENT MANAGEMENT   #
             #======================#---------------------------------------------------------------
             # Check for (valid) changes in the online event database 
             #--------------------------------------------------------------------------------------
             manageOnlineEvents( )
+
             
             #--------------------------------------------------------------------------------------
             # check if we have an event going on at the moment
@@ -896,13 +910,15 @@ if __name__ == '__main__':
             #print( todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id )
             # example data returned on the morning of an event:
             # ('Tuesday Night Service', False, 40061, '2', -46361)
+
             
-            if todaysEvent!='' and settings['heating']!='OFF' :
+            if todaysEvent!='' and settings['heating']=='AUTO' :
                 # find the current room temp of event room
                 if str(room).find('1') < 0:
                     currentRoomTemp = fronTemp
                 else:
                     currentRoomTemp = mainTemp
+
                 #--------------------------------------------------------------------------------------
                 #                   Calculate Switch-on Time
                 #--------------------------------------------------------------------------------------
@@ -922,9 +938,11 @@ if __name__ == '__main__':
                 Logger.debug("Calculated values: (toStart - heatingDuration - currentRoomTemp) \n" + \
                                 formatSeconds(toStart)+' - '+formatSeconds(heatingDuration)+' - '+str(currentRoomTemp) )
 
+
                 # report estimated heating switch-on time to DB
                 if toStart-heatingDuration>600 and sinceEnd < 0: 
                     reportEstimateOn( lclSQLcursor, toStart-heatingDuration, eventID, online_id )
+
                 
                 # if program was restarted, we do not know what the heating status is, so we have to check the TF switches!
                 if boiler_on and heating_on: watch['heatingActive'] = True
@@ -985,7 +1003,9 @@ if __name__ == '__main__':
                     watch['heatingActive'] = False
                     writeNextEventDate( lclSQLcursor, eventID, online_id )
                 
-            else:
+            # make sure heating is OFF when AUTOmation is on and no event active!
+            if todaysEvent=='' and settings['heating']=='AUTO':
+                switchHeating( lclSQLcursor, False, False, 0, 0 )
                 Logger.debug ("No event active now. (" + todaysEvent+' - '+str(watch['eventHasStarted'])+' - '+formatSeconds(toStart)+' - '+str(room)+' - '+formatSeconds(sinceEnd)+')')
 
             Logger.debug( "Event active? " + str(watch['eventHasStarted']) + ". In room: " + str(room) )
