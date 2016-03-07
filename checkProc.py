@@ -119,6 +119,7 @@ from libFunctions import formatSeconds
 from libFunctions import hilite
 from libFunctions import getLastTempHumid
 from libFunctions import getCurrentTAN
+from libFunctions import notifyAll
 
 # determine host os # ('win32' or 'linux2')
 onWindows = False
@@ -429,7 +430,7 @@ def checkPythonProgs(retry=False):
     if oneoff: return           # stop here for one-off (manual) call 
     # Now test if exactly 2 other Python progs are running,
     # but give them another chance (e.g. while they are restarting itself due to source code change)
-    if not okProgs==2:
+    if okProgs < 2:
         if not retry:
             print("first try pids:", pids)
             broadcast("Missing Python progs! Checking again in 60s.")
@@ -439,6 +440,8 @@ def checkPythonProgs(retry=False):
         print('-'*75, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") )
         print( pids )
         broadcast("Missing Python progs! Reboot required.")
+        if onWindows:
+            notifyAll( "Missing python progs! checkProc stopped.\n\nSearching for: " + str(pids) + "\nFound: " + str(pythonProgs) )
         sys.exit(1)             # causes a REBOOT!
 
 #------------------------------------------------------------------------------------------------------
@@ -525,7 +528,9 @@ if __name__ == "__main__":
         #---------------------------------------------
         # check the running Python processes
         #---------------------------------------------
-        checkPythonProgs()
+        # but not on midnight ...
+        if not (now.minute == 59  and  now.hour == 23):
+            checkPythonProgs()
 
 
 

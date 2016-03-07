@@ -5,7 +5,7 @@
 #-------------------------------------------------------------------------------+
 #                                                                               |
 # PURPOSE:  monitors power and temperatures, controls heating and               |
-#           switches light on motion in main room                              |
+#           switches light on motion in main room                               |
 #                                                                               |
 # ACTION:   In case of problems, reboots the RaspBerryPi in order to reset the  |
 #           Tinkerforge sensors and restarting all the processes                |
@@ -250,8 +250,8 @@ def manageOnlineEvents( ):
     # -------------------------------------------------------------------
     newTAN = random.randint(10000,99999)
     insertNewEvent( lclSQLcursor, newOrUpdatedEvent, newTAN )
-    notifyAll( "Successfully synced remote Events with local DB and new TAN: " + \
-        str(newTAN) + "\n" + str(newOrUpdatedEvent), "Events DB synced - new TAN" )
+    notifyAll( "Successfully synced remote Events with local DB.\n\n New TAN is: " + \
+        str(newTAN) + "\n\nUpdated Event was:\n" + str(newOrUpdatedEvent), "Events DB synced - new TAN" )
 
 
 
@@ -406,7 +406,7 @@ def analyzePowerData( list ):
 
     # PowerAlert suspicion was NOT confirmed, so we must have another, unknown appliance running!
     if watch['pwrAlertSuspicion']:
-        Logger.info( "PowerAlert suspicion was NOT confirmed, so we must have another, unknown appliance running! " + str(powerProfile) )
+        Logger.debug( "PowerAlert suspicion was NOT confirmed, so we must have another, unknown appliance running! " + str(powerProfile) )
     
     # is average of last 50 readings 25% above previous avg?
     #recentHigh = getListAvg(list[-60:])
@@ -415,7 +415,7 @@ def analyzePowerData( list ):
     
     if not watch['powerAlert'] and not watch['trustedApplianceRunning']:
         if recentChg>5 and changeDuration>30:
-            broadcast( "buildingControl.py power alert!\r\nUsage now at " + str(recentChg) + 
+            Logger.debug( "buildingControl.py power alert!\r\nUsage now at " + str(recentChg) + 
                        "\r\nsuspected appliance is " + appliance + "\r\nPowerProfile: " + str(powerProfile))
             #Logger.setLevel(logging.DEBUG) 
             watch['powerAlert'] = False
@@ -606,11 +606,15 @@ def raspiTemp( cur ):
     return temp
 
 def getLastTempValues( cur ):
-    # read recent outdoor temp
-    outdoor = getWeather()
+    # read prevous outdoor temp
+    sql = 'SELECT `outdoor` FROM `building_templog` ORDER BY `timestamp` DESC LIMIT 1; '
+    result = cur.execute( sql )
+    outdoor = 99.1
+    if result>0: outdoor = cur.fetchone()[0]
+    else: print('getLastTempValues error:', result)
     
     # read CURRENT temp sensor values
-    sql = 'SELECT * FROM `sensors` ORDER BY computertime DESC LIMIT 1'
+    sql = 'SELECT * FROM `sensors` ORDER BY computertime DESC LIMIT 1; '
     result = cur.execute( sql )
     temps = (0,0,0,0)
     if result>0: temps = cur.fetchone()
@@ -631,13 +635,13 @@ def getTFsensValues(lclSQLcursor):
     else: exitCode = 0
     babyTemp    = 10 #raspiTemp(lclSQLcursor)       # from temp sensor on Raspberry Pi ----CURRENTLY OOO----
     outdoorTemp = getWeather()
-    if outdoorTemp == 99.5:       # function was unable to retrieve weather data
+    if str(outdoorTemp) > '99':       # function was unable to retrieve weather data
         outdoorTemp = oldOutdoorTemp # from weather service or alternatively, from last value
     # create SQL statement and write into DBs
     tempSQL = "INSERT INTO `building_templog` () VALUES ('" + now.strftime("%Y-%m-%d %H:%M:%S") + "', "
     tempSQL+= str(mainTemp) +", "+ str(heatTemp) +", "+ str(fronTemp) +", 0, 0, "+ str(outdoorTemp) +", "+ str(babyTemp) +");"
     executeSQL( lclSQLcursor, tempSQL, 'write TF sensor values into' )    # write into local DB on Raspi
-    return tempSQL, outdoorTemp, mainTemp, fronTemp, heatTemp
+    return outdoorTemp, mainTemp, fronTemp, heatTemp
 
 
 ''' currently unused ... '''
@@ -807,7 +811,7 @@ if __name__ == '__main__':
 
         
         #---------------------------------------------------------------------------------------------------
-        # add new values to SQL statement
+        # add new POWER values and heating/boiler status to SQL statement
         # when we have 10 values (= 10 seconds), write data into database
         #---------------------------------------------------------------------------------------------------
         now = datetime.datetime.now()        
@@ -857,13 +861,14 @@ if __name__ == '__main__':
         
             # get latest values and write them into remote DB
             oldMT, oldFT = mainTemp, fronTemp
-            SQLcmd, outdoorTemp, mainTemp, fronTemp, heatTemp = getTFsensValues( lclSQLcursor )
-            # only write into remote DB if there was a value change
-            if not oldMT == mainTemp or not oldFT == fronTemp:
-                writeApiTempLog(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on)
+            outdoorTemp, mainTemp, fronTemp, heatTemp = getTFsensValues( lclSQLcursor )
+                # only write into remote DB if there was a value change
+                #if not oldMT == mainTemp or not oldFT == fronTemp:
+            # write data into remote DB
+            writeApiTempLog(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on)
             
             # write debug info into the logfile 
-            Logger.info( 'Watts:' + str(watts) + ', recentAvg: ' + str(round( getListAvg(recent) )) +
+            Logger.debug( 'Watts:' + str(watts) + ', recentAvg: ' + str(round( getListAvg(recent) )) +
                            "\r\nFridge on? "    + str(watch['trustedApplianceRunning'])     +
                            "\tHeating on? "     + str(watch['heatingActive'])    +
                            "\tPower Alert? "    + str(watch['powerAlert'])       +
@@ -955,9 +960,9 @@ if __name__ == '__main__':
                     watch['heatingActive'] = True
                     notifyAll( 
                                 "Trying to switch on heating for " + todaysEvent + \
-                                ".\n (toStart, heatingDuration, sinceEnd) \n" + \
+                                ".\n\n (toStart, heatingDuration, sinceEnd) \n" + \
                                 formatSeconds(toStart)+' - '+formatSeconds(heatingDuration)+' - '+formatSeconds(sinceEnd) + \
-                                "\nCurrent room temp.: " + str(currentRoomTemp) + " Target room temp.: " + str(targetTemp)
+                                "\n\nCurrent room temp.: " + str(currentRoomTemp) + "\nTarget room temp.: " + str(targetTemp)
                              )
                     switchHeating( lclSQLcursor, True, True, eventID, online_id )
                 
@@ -965,7 +970,7 @@ if __name__ == '__main__':
                 # (with a tolerance of 10 minutes!)
                 if heating_on and toStart > (heatingDuration+1200) and sinceEnd < 0:
                     # we need to switch heating OFF !!
-                    notifyAll( "Switch OFF heating as pre-heating timespan shorter than remaining time (toStart - heatingDuration - currentRoomTemp) "+\
+                    notifyAll( "Switch OFF heating as pre-heating timespan shorter than remaining time\n\n(toStart - heatingDuration - currentRoomTemp)\n"+\
                                 formatSeconds(toStart)+' - '+formatSeconds(heatingDuration)+' - '+str(currentRoomTemp) )
                     if boiler_on:
                         if watch['eventHasStarted']:
@@ -980,13 +985,13 @@ if __name__ == '__main__':
                 
                 # if event is ongoing and currentRoomTemp > targetTemp, switch off boiler!
                 if watch['eventHasStarted'] and currentRoomTemp > targetTemp and heating_on:
-                    notifyAll("Switching off boiler since event is ongoing and currentRoomTemp > targetTemp! " +
+                    notifyAll("Switching off boiler since event is ongoing and currentRoomTemp > targetTemp!\n\n" +
                                 formatSeconds(toStart) + ' ' + str(currentRoomTemp) + ' ' + str(targetTemp) )
                     switchHeating( lclSQLcursor, True, False, eventID, online_id )
                 
                 # if event is ongoing and outdoorTemp > 17, switch off boiler!
                 if watch['eventHasStarted'] and float(outdoorTemp) > 17 and heating_on:
-                    notifyAll("Switching off boiler since outdoorTemp > 17! " +
+                    notifyAll("Switching off boiler since outdoorTemp > 17!\n\n" +
                                 formatSeconds(toStart) + ' ' + str(currentRoomTemp) + ' ' + str(outdoorTemp) )
                     switchHeating( lclSQLcursor, True, False, eventID, online_id )
                 
@@ -996,8 +1001,8 @@ if __name__ == '__main__':
                 if sinceEnd > 900 and boiler_on:
                     notifyAll(
                             "Trying to switch OFF heating for " + todaysEvent + \
-                            "\n(sinceEnd, boiler on?" + formatSeconds(sinceEnd) + ' - ' + str(boiler_on) + \
-                            ")\nCurrent room temp.: " + str(currentRoomTemp) + " Target room temp.: " + str(targetTemp)
+                            "\n\n(sinceEnd, boiler on?" + formatSeconds(sinceEnd) + ' - ' + str(boiler_on) + \
+                            ")\n\nCurrent room temp.: " + str(currentRoomTemp) + "\nTarget room temp.: " + str(targetTemp)
                         )
                     switchHeating( lclSQLcursor, False, False, eventID, online_id)
                     watch['heatingActive'] = False
@@ -1006,7 +1011,7 @@ if __name__ == '__main__':
             # make sure heating is OFF when AUTOmation is on and no event active!
             if todaysEvent=='' and settings['heating']=='AUTO':
                 switchHeating( lclSQLcursor, False, False, 0, 0 )
-                Logger.debug ("No event active now. (" + todaysEvent+' - '+str(watch['eventHasStarted'])+' - '+formatSeconds(toStart)+' - '+str(room)+' - '+formatSeconds(sinceEnd)+')')
+                Logger.debug ("No event active now.\n\n (" + todaysEvent+' - '+str(watch['eventHasStarted'])+' - '+formatSeconds(toStart)+' - '+str(room)+' - '+formatSeconds(sinceEnd)+')')
 
             Logger.debug( "Event active? " + str(watch['eventHasStarted']) + ". In room: " + str(room) )
             Logger.debug(" ")
@@ -1048,9 +1053,21 @@ if __name__ == '__main__':
                     broadcast("libFunctions.py script was changed - exiting script...")
                     exitCode=2
                     break
+
+
+
+        #---------------------------------------------------------------------------------------------------
+        # and at midnight, as scheduler starts it again
+        #---------------------------------------------------------------------------------------------------
+        if now.hour == 23 and now.minute > 57:
+            break
+
        
         time.sleep(.95)             # wait 1 second
         count+=1                    # loop counter
+
+
+
 
 
     #---------------------------------------------------------------------------------------------------------

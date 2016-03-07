@@ -97,6 +97,7 @@ settings = getLclSettings( lclSQLcursor )
 
 
 admin  = settings['adminEmail']
+backupAdmin  = settings['backupAdmin']
 
 # URL for power usage reading on the youless monitor
 youLessURL    = settings['youLessURL']
@@ -299,7 +300,8 @@ def writeApiEventNextdate( id, nextdate ):
     print("# "*90)
     payload = { 'access_token' : apiItems['accToken']  }
     r = requests.patch( apiItems['url']+'events/'+str(id)+'/nextdate/'+nextdate, data=payload )
-    if not r.status_code == 202: # 201=new record created
+    print(r.text)
+    if not r.status_code == 202: # 202= record updated
         handleAPIerrors(r, "write event nextdate via")
 
 
@@ -601,7 +603,7 @@ def notifyAll( text, subject="Building Control Notification" ):
     ''' notify via logger, terminal and email '''
     Logger.info(text)
     broadcast(text)
-    sendEmail(admin, subject, text)
+    sendEmail([admin, backupAdmin], subject, text)
 
 
 
@@ -609,41 +611,76 @@ def notifyAll( text, subject="Building Control Notification" ):
 ''' ----------------  special task forces  ------------------ '''
 def uploadFTP( file ):
     ''' upload file via ftp '''
+
     # check if file exists
     if ( not os.path.isfile(file) ):
-        Logger.info("uloadFTP: file not found: " + file)
+        Logger.error("uloadFTP: file not found: " + file)
         return
+    print("Beginning FTP upload background job with", file)
+    
     curpath = os.getcwd()               # store current path
     fpath, fname = os.path.split(file)  # get path and name separated
     os.chdir(fpath)                     # change working dir to fpath
-    open(ftpUploadIndicator,'w').write('currently uploading: '+fname).close()
+    tt = open(ftpUploadIndicator,'w')
+    tt.write('currently uploading: '+fname)
+    tt.close()
+    
     # build ftp command set
     ftp = ftplib.FTP("ftp1.reg365.net")
     ftp.login("ennisevangelicalchurch.org", "Tha!land:01")
     ftp.cwd("web/jdownloads/")
-    ftp.cwd('sermon recordings')
-    # presume type of file depending on day of week!
-    now = datetime.datetime.now()
-    if ( now.weekday() > 1 and now.weekday() < 6 ):
-            hostPath = 'bible study teaching'
-    else:        
+    
+    # work out host path according to file type and day of week
+    filename, file_extension = os.path.splitext( file )
+    if file_extension.lower() == '.mp3':
+        ftp.cwd('Sermon Recordings')
+        # presume type of file depending on day of week!
+        now = datetime.datetime.now()
+        if ( now.weekday() > 1 and now.weekday() < 6 ):
+            if (filename.find("Judges")>0):
+                hostPath = 'bible study teaching/Judges Series'
+            else:
+                hostPath = 'bible study teaching'
+        else:   
             hostPath = 'sunday service teaching'
-    ftp.cwd(hostPath)
+            if (filename.find("Ephesians")>0):
+                hostPath = 'sunday service teaching/Ephesians Series'
+            if (filename.find("Genesis")>0):
+                hostPath = 'sunday service teaching/Genesis Series'
+            if (filename.find("John")>0):
+                hostPath = 'sunday service teaching/Gospel of John Series'
+                
+        ftp.cwd(hostPath)
+        
+    # Path for Newsletters
+    if file_extension.lower() == '.pdf':
+        ftp.cwd('Documents and Newsletters')
+        ftp.cwd('Newsletter')
+        hostPath = 'Newsletter'
+        
+    # rename local file to remove special characters
+    os.rename(fname, fname.replace("'", " ") )
+    fname = fname.replace("'", " ")
+        
+    print("About to send FTP upload command to ", hostPath)
     ftp.storbinary("STOR " + fname, open(fname, "rb"), 1024)
     ftpRC = ftp.lastresp    
     # to avoid continuous processing, if upload fails, rename the file in ANY case!
-    os.rename(fname, fname+".done" )
-    os.chdir(curpath)           # go back to current working directory
+    os.rename(fname, fname+".uploaded" )
     # evaluate return code from upload
     if int(ftpRC) == 226: 
-        Logger.info('File uploaded to FTP server: ' + file + ". RC:" + ftpRC)
+        print('File uploaded to FTP server: ' + file + ". RC:" + ftpRC)
         sendEmail(admin,'File uploaded to FTP server: ', file + "\nwas uploaded to " + hostPath + "\n RC:" + ftpRC)
     else:
-        Logger.info('File upload to FTP server failed! File name: ' + file + ". Error code:" + ftpRC)
+        print('File upload to FTP server failed! File name: ' + file + ". Error code:" + ftpRC)
         sendEmail(admin,'File uploaded to FTP server failed!', file + '\nError: ' + ftpRC )
     ftp.quit()
     os.remove(ftpUploadIndicator)       # remove the temporary indicator file again
+    os.chdir(curpath)           # go back to current working directory
     return        
+
+    
+
 
 
 
@@ -787,7 +824,7 @@ def checkHeatingStatus( ipcon, UID=TF_HEATSW_UID, writeLog=False ):
 def getWeather(getAll=False):
     ''' cget current outdoor temp '''
     try:
-        r = requests.get('http://api.openweathermap.org/data/2.5/weather?q=Ennis,IE&APPID=639b476cc699eca2112cbccd5944f282', timeout=3)
+        r = requests.get('http://api.openweathermap.org/data/2.5/weather?q=Ennis,IE&APPID=639b476cc699eca2112cbccd5944f282', timeout=4)
         if not r.ok or len(r.content) < 400:
             return 99.5
     except:
@@ -820,7 +857,7 @@ def switchHeating( mySQLdbCursorObj, sw1, sw2, eventID, online_id, UID=TF_HEATSW
         
     now = datetime.datetime.now()
     if isSw1 == sw1 and isSw2 == sw2:
-        Logger.info("switchHeating: No change! " + str(sw1) +','+ str(sw2) )
+        Logger.debug("switchHeating: No change! " + str(sw1) +','+ str(sw2) )
         return
     try:
         result = dr.set_state(sw1, sw2)
@@ -839,7 +876,7 @@ def switchHeating( mySQLdbCursorObj, sw1, sw2, eventID, online_id, UID=TF_HEATSW
 
     # execute SQL remote and local
     executeSQL( mySQLdbCursorObj, sqlCmd, 'write heating switching time into' )  # local
-    if eventID==0: return   # heating control is on manual, so no event id involved
+    #if eventID==0: return   # heating control is on manual, so no event id involved
     # and remote
     writeApiEventLog( online_id, actOn=actualOn, actOff=actualOff )   
 
@@ -866,8 +903,9 @@ def controlLights( mySQLdbCursorObj, which, onOrOff ):
         errmsg = str(traceback.format_exception( *sys.exc_info() ));
         Logger.error("Error when trying to telnet with Dovado Router for Light control! " + errmsg)
         return
-    if not tnResult == "bye bye!":
-        Logger.info("RESULT FROM controlLights "+str(which)+' '+onOrOff+": "+tnResult)
+    #if not 'bye' in tnResult:
+    print(which, onOrOff, tnResult)
+    Logger.info("RESULT FROM controlLights "+str(which)+' '+onOrOff+": "+tnResult)
         
     #  log this into local DB building_logbook
     sql = "INSERT INTO `building_logbook` () VALUES ( NOW(), 'light', 'main', '"+onOrOff+"' )"
@@ -915,7 +953,7 @@ def checkCurrentEvent( mySQLdbCursorObj ):
         return '', False, 0, 0, 0, 0
     # evaluate the returned data
     for r in mySQLdbCursorObj.fetchall():
-        #if oneoff: print( r )
+        #print( r )
         # if this is a weekly event and today is this event's weekday
         # or this is a one-off event and today is the date
         #    then we have an event today!
@@ -997,7 +1035,7 @@ def insertNewEvent( mySQLdbCursorObj, ev, newTAN ):
 
     # for updates, change the status of the existing event to "OLD"
     if ev['status']  in  [ 'UPDATE', 'DELETE' ]:
-        sqlCMD = "UPDATE `building_events` set `status`='OLD' where `title`='"+ev['title']+"';"
+        sqlCMD = "UPDATE `building_events` set `status`='OLD' where `online_id`='"+ev['id']+"';"
         executeSQL( mySQLdbCursorObj, sqlCMD )
  
     # insert the update as a new event
@@ -1041,6 +1079,7 @@ def reportEstimateOn( mySQLdbCursorObj, timeDiff, eventID, online_id ):
 
     # write it into local DB table
     sql = "INSERT INTO heating_logbook (`eventID`, `estimateOn`)  VALUES ('"+str(eventID) + "', '" + estOn + "');"
+    print(sql)
     executeSQL( mySQLdbCursorObj, sql, 'write estimated switch-on time into' )
     # write into remote DB table via API
     writeApiEventLog( online_id, estOn=estOn )

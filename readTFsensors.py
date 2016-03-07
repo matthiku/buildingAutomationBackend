@@ -134,8 +134,8 @@ def getTmStmp():
 # record the data into the database
 def writeToDB(hw,fr,mn):
 
-    now = datetime.datetime.now()        
-    timestamp = int( datetime.datetime.timestamp( now )) 
+    now = datetime.datetime.now()
+    timestamp = int( datetime.datetime.timestamp( now ))
 
     # get newest record from DB
     sql = "SELECT * FROM `sensors` ORDER BY computertime DESC LIMIT 1; "
@@ -148,8 +148,6 @@ def writeToDB(hw,fr,mn):
     # check if old values equals new values
     diff = abs( float(last[1])-float(hw) + float(last[2])-float(fr) + float(last[3])-float(mn) )
     if diff < 0.1: 
-        print("Replacing date of last entry since no values changed: (OLD)" + str(last) + \
-            " (NEW) " + str(timestamp) + hw + ', ' + fr + ', ' + mn )
         tempSQL = \
             "UPDATE `sensors` SET `computertime`=" + str(timestamp) + \
             " WHERE `computertime`=" + str(lastTime) + "; "
@@ -163,6 +161,7 @@ def writeToDB(hw,fr,mn):
     if lastTime == timestamp:
         tempSQL = "UPDATE `sensors` SET `heatwater`=" + hw + ", `frontroom`=" + fr + ", `mainroom`=" + mn + \
             " WHERE `computertime`=" + str(timestamp) + "; "
+        print("Updating last record:", tempSQL)
     else: 
         tempSQL = "INSERT INTO `sensors` () VALUES (" + str(timestamp) +", "+ hw +", "+ fr +", "+ mn +");"
     # execute SQL statement
