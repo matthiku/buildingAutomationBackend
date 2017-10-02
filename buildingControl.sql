@@ -9,27 +9,28 @@ CREATE TABLE IF NOT EXISTS `building_logs` (
   PRIMARY KEY (`updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+-- create table sensors for logging sensor values
+CREATE TABLE `sensors` (
+	`computertime` TIMESTAMP NOT NULL,
+	`heatwater` FLOAT NULL DEFAULT NULL,
+	`frontroom` FLOAT NULL DEFAULT NULL,
+	`mainroom` FLOAT NULL DEFAULT NULL,
+	PRIMARY KEY (`computertime`)
+) ENGINE=InnoDB;
+
 -- create table building_templog
 CREATE TABLE IF NOT EXISTS `building_templog` (
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `mainroom` decimal(3,1) NOT NULL,
-  `auxtemp` decimal(3,1) NOT NULL,
-  `frontroom` decimal(3,1) NOT NULL,
-  `heating_on` tinyint(1) NOT NULL,
-  `power` int(11) NOT NULL,
-  `outdoor` decimal(3,1) NOT NULL,
-  `babyroom` decimal(3,1) NOT NULL,
-  PRIMARY KEY (`updated_at`)
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `mainroom` decimal(3,1) NULL,
+  `auxtemp` decimal(3,1) NULL,
+  `frontroom` decimal(3,1) NULL,
+  `heating_on` tinyint(1) NULL,
+  `power` int(11) NULL,
+  `outdoor` decimal(3,1) NULL,
+  `babyroom` decimal(3,1) NULL,
+  PRIMARY KEY (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- create table power_logs
-CREATE TABLE IF NOT EXISTS `power_logs` (
-	`updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`power` INT(11) NOT NULL,
-	`heating_on` TINYINT(1) NOT NULL,
-	`boiler_on` TINYINT(1) NOT NULL,
-	PRIMARY KEY (`updated_at`)
-);
 
 -- create table building_power
 CREATE TABLE IF NOT EXISTS `building_power` (
