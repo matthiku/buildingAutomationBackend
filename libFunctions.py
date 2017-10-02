@@ -1,5 +1,5 @@
 #! /usr/local/bin/python
-# -*- coding: utf-8 -*-  
+# -*- coding: utf-8 -*-
 
 import sys, os, traceback, logging
 import subprocess, re, psutil
@@ -28,7 +28,7 @@ import socket, struct
 
 
 # get access to the logger
-Logger = logging.getLogger("buildingControl") 
+Logger = logging.getLogger("buildingControl")
 
 # determine host OS ('win32' or 'linux2')
 onWindows = False
@@ -42,7 +42,7 @@ if sys.platform[:5] == 'linux':
 
 # mySQL database access
 lclSqlSrv = 'localhost'
-lqlSqlUsr = 'james'
+lclSqlUsr = 'james'
 lclSqlPwd = ''
 lclSqlDB  = 'monitoring'
 
@@ -51,8 +51,15 @@ lclSqlDB  = 'monitoring'
 def getMySQLconn( ):
     ''' create mySQL database connection '''
     try:
-        mySqlConn = pymysql.connect(host=lclSqlSrv, port=3306, user=lqlSqlUsr, passwd=lclSqlPwd, db=lclSqlDB)
+        mySqlConn = pymysql.connect(host=lclSqlSrv, port=3306, user=lclSqlUsr, passwd=lclSqlPwd, db=lclSqlDB)
     except Exception as e:
+        if e.args[0] == 1045:
+            print('+' + 80*'-' + "\n| ERROR: " + e.args[1])
+            print('| Problems accessing the database, check the DB settings!')
+            print('| Server: ', lclSqlSrv, ' - user:', lclSqlUsr, ' - DB:', lclSqlDB, "\n+"+80*'-')
+            return -1
+        print(e.args[0], e.args[1])
+        print('Generic problems with the database, check the DB settings!')
         errmsg = str(traceback.format_exception( *sys.exc_info() ));
         Logger.info( 'Local mySQL connection failed ... ' + errmsg );
         sendEmail(admin,'BuildingControl.py', 'local mySQL connection failed ... ' + errmsg )
@@ -60,18 +67,33 @@ def getMySQLconn( ):
         return -1
     # return the mySQL connection object
     return mySqlConn
+
 lclConn = getMySQLconn()
 lclSQLcursor = lclConn.cursor()
 
 def executeSQL(mySQLdbCursorObj, sqlCmd, taskDescription="access" ):
     ''' execute local SQL command '''
     Logger.debug("Trying to execute sql command: "+sqlCmd)
+    if not len(sqlCmd):
+        exit(-1)
     result=0
     try:
         result = mySQLdbCursorObj.execute( sqlCmd )
         if sqlCmd.split()[0] != "SELECT":
             mySQLdbCursorObj.execute("COMMIT; ")
     except Exception as e:
+        if e.args[0] == 1064:
+            print('+' + 80*'-' + "\n| ERROR: " + e.args[1])
+            print('| Erorr in SQL command! Verify this, then start program again!')
+            print('| SQL command: ', sqlCmd)
+            print("\n+"+80*'-')
+            exit(-1)
+        if e.args[0] == 1146:
+            print('+' + 80*'-' + "\n| ERROR: " + e.args[1])
+            print('| Tables missing in the database! Will be created now:')
+            createTables(mySQLdbCursorObj)
+            print("| Verify the new tables, then start program again!\n+"+80*'-')
+            exit(-1)
         errmsg = str(traceback.format_exception( *sys.exc_info() ));
         Logger.error( sqlCmd + "Unable to " + taskDescription + " local DB!" + errmsg  + " RESULT was: " + str(result) )
 
@@ -86,10 +108,32 @@ def getLclSettings(lclSQLcursor):
     settings['source'] = "local"
     return settings
 
-# define minimal defaults so that we can run locally without any DB
-# settings = {
-#   'TFheatSwUID'   : '6D9',
-# }
+# initialize local DB
+def createTables(mySQLcursor):
+    file = "buildingControl.sql"
+    if not os.path.exists(file):
+        print('sql init file not found: ', file)
+        exit(-1)
+    statement = ""
+    for line in open(file):
+        line = line.strip(' ')
+        if len(line) < 2  or line == '\n':  # ignore empty lines
+            continue
+        if re.match(r'--', line):
+            print('| ' + line, end='')
+            continue
+        if not re.search(r'[^-;]+;', line):  # keep appending lines that don't end in ';'
+            statement = statement + line
+        else:  # when you get a line ending in ';' then exec statement and reset for next statement
+            statement = statement + line
+            #print( "\n\n[DEBUG] Executing SQL statement:\n%s" % (statement))
+            try:
+                mySQLcursor.execute( statement )
+            except Exception as e:
+                print(e.args[0], e.args[1])
+                print('Generic problems with the database, check the DB settings!')
+                exit(-1)
+            statement = ""
 
 # now read the settings
 settings = getLclSettings( lclSQLcursor )
@@ -130,7 +174,7 @@ apiItems = {
                         'client_id'     : 'editor',
                         'client_secret' : settings['buildingAPIclient_secret'],
                      }
-} 
+}
 
 
 ''' write HTML code returned from failed API call in to a file '''
@@ -154,7 +198,7 @@ def handleAPIerrors(requestsResult, activity):
         " remote DB via RESTful API! Status code: "+str(requestsResult.status_code))
 
 
-''' request a new access token from remote REST API 
+''' request a new access token from remote REST API
     return access_token and expiration time in seconds
 '''
 def getToken():
@@ -162,11 +206,11 @@ def getToken():
     if r.status_code == 200:
         apiItems['accToken'] = r.json()['access_token']
         return r.json()['expires_in']
-    print(r.text)    
+    print(r.text)
 
 
 ''' access token handling '''
-def checkToken():    
+def checkToken():
     now = datetime.datetime.now().timestamp()
     # check if token has expired
     if apiItems['expire'] - now < 1:
@@ -219,7 +263,7 @@ def getSettings( lclSQLcursor ):
         updateLclSettings(lclSQLcursor, lclSettings, settings)
         settings['source'] = "remote"
         return settings
-    
+
     if settings['status'] == 'UPDATE' and not settings['seed'] == settingsTAN:     # invalid remote TAN ...
         print("remote settings not accepted, wrong TAN:", settings['seed'] ,"Should be:", settingsTAN)
 
@@ -233,12 +277,12 @@ def getApiEvents():
         Logger.exception('Unable to read events table from remote DB via RESTful API!')
         return
     # returned data is in JSON format labelled 'data'
-    return r.json()['data'] 
+    return r.json()['data']
 
 
 ''' write PowerLog data into remote DB via buildingAPI '''
 def writeApiPowerLog( watts, boiler_on, heating_on, tstamp ):
-    # set token expiration time to now, so that 
+    # set token expiration time to now, so that
     # we have to request a new token immediately for the buildingAPI
     checkToken()
     payload = { # create payload data as dict for buildingAPI
@@ -330,7 +374,7 @@ def formatSeconds( secs, long=True ):
         return secs
     # handling negatives
     minus = ''
-    if secs < 0: 
+    if secs < 0:
         minus = '-'
         secs = abs(secs)
     # formatting depends on amount of seconds
@@ -354,12 +398,12 @@ def hilite( string, color='none', bold=False ):
     if color == 'blue':   attr.append('34')
     if bold:              attr.append('1')
     return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), str(string))
- 
+
 
 def cjust( string, length ):
     ''' return a centered string of the given length padded with spaces on both sides '''
     pass
-   
+
 
 def maxList( list, newElem, max ):
     list.append(newElem)
@@ -418,7 +462,7 @@ def computerOnline( name ):
     else:
         cmd = "ping "+name
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
-    # Interact with process: 
+    # Interact with process:
     #   Send data to stdin
     #   Read data from stdout and stderr, until end-of-file is reached
     #   Wait for process to terminate
@@ -428,13 +472,13 @@ def computerOnline( name ):
     # Wait for date to terminate. Get return returncode
     p_status = p.wait()
     # check return code
-    if p_status == 0: 
+    if p_status == 0:
         return True
     return False
-  
+
 
 def wake_on_lan( macaddress ):
-    """ Wake on LAN 
+    """ Wake on LAN
     Switches on remote computers using WOL. """
     # Check mac address format and try to compensate.
     if len(macaddress) == 12:
@@ -444,10 +488,10 @@ def wake_on_lan( macaddress ):
         macaddress = macaddress.replace(sep, '')
     else:
         Logger.error('WOL: Incorrect MAC address format ' + macaddress)
- 
+
    # Pad the synchronization stream.
     data = b'FFFFFFFFFFFF' + (macaddress * 20).encode()
-    send_data = b'' 
+    send_data = b''
 
     # Split up the hex values and pack.
     for i in range(0, len(data), 2):
@@ -456,13 +500,13 @@ def wake_on_lan( macaddress ):
     # Broadcast it to the LAN.
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    result = sock.sendto(send_data, ('<broadcast>', 7))    
+    result = sock.sendto(send_data, ('<broadcast>', 7))
     Logger.info('WOL - Result from trying to wake_on_Lan %s was %s.' %(macaddress, str(result),) )
 
 
 def getPID( name ):
     #
-    # returns an array of pids (or an empty array) 
+    # returns an array of pids (or an empty array)
     # of all tasks whose name matches name (case insensitive!)
     #
     tasklist = os.popen("tasklist").readlines()
@@ -487,7 +531,7 @@ def schTaskIsRunning( name ):
     ''' Check if a certain scheduled task is running '''
     # only works on Windows
     if sys.platform != 'win32': return False
-    
+
     cmd = "schtasks.exe /query /tn " + name
     try:
         result = (subprocess.check_output(cmd)).splitlines()
@@ -538,7 +582,7 @@ def internet_on():
     url='http://google.com'
     request = urllib.request.Request(url)
     try:
-        response = urllib.request.urlopen(request,timeout=1)    
+        response = urllib.request.urlopen(request,timeout=1)
         return True
     except: pass
     Logger.error("=== No connection to the Internet! ===")
@@ -552,7 +596,7 @@ def sendEmail( destination, subject, content ):
 
     # don't try this if we are offline
     if not internet_on(): return
-    
+
     SMTPserver = 'smtp.gmail.com'
     sender =     'raspitf1@gmail.com'
 
@@ -588,7 +632,7 @@ def sendEmail( destination, subject, content ):
 def broadcast( text ):
     ''' Broadast messages to other terminals '''
     now = datetime.datetime.now()
-    lines = str(text).splitlines() 
+    lines = str(text).splitlines()
     text = now.strftime("%Y-%m-%d %H:%M:%S") + ' - ' + __file__ + "\n" + lines[0]
     if onLinux: subprocess.call('echo "' + text + '"| wall -n', shell=True )
     print(text)
@@ -617,19 +661,19 @@ def uploadFTP( file ):
         Logger.error("uloadFTP: file not found: " + file)
         return
     print("Beginning FTP upload background job with", file)
-    
+
     curpath = os.getcwd()               # store current path
     fpath, fname = os.path.split(file)  # get path and name separated
     os.chdir(fpath)                     # change working dir to fpath
     tt = open(ftpUploadIndicator,'w')
     tt.write('currently uploading: '+fname)
     tt.close()
-    
+
     # build ftp command set
     ftp = ftplib.FTP("ftp1.reg365.net")
     ftp.login("ennisevangelicalchurch.org", "Tha!land:01")
     ftp.cwd("web/jdownloads/")
-    
+
     # work out host path according to file type and day of week
     filename, file_extension = os.path.splitext( file )
     if file_extension.lower() == '.mp3':
@@ -641,7 +685,7 @@ def uploadFTP( file ):
                 hostPath = 'bible study teaching/Judges Series'
             else:
                 hostPath = 'bible study teaching'
-        else:   
+        else:
             hostPath = 'sunday service teaching'
             if (filename.find("Ephesians")>0):
                 hostPath = 'sunday service teaching/Ephesians Series'
@@ -649,26 +693,26 @@ def uploadFTP( file ):
                 hostPath = 'sunday service teaching/Genesis Series'
             if (filename.find("John")>0):
                 hostPath = 'sunday service teaching/Gospel of John Series'
-                
+
         ftp.cwd(hostPath)
-        
+
     # Path for Newsletters
     if file_extension.lower() == '.pdf':
         ftp.cwd('Documents and Newsletters')
         ftp.cwd('Newsletter')
         hostPath = 'Newsletter'
-        
+
     # rename local file to remove special characters
     os.rename(fname, fname.replace("'", " ") )
     fname = fname.replace("'", " ")
-        
+
     print("About to send FTP upload command to ", hostPath)
     ftp.storbinary("STOR " + fname, open(fname, "rb"), 1024)
-    ftpRC = ftp.lastresp    
+    ftpRC = ftp.lastresp
     # to avoid continuous processing, if upload fails, rename the file in ANY case!
     os.rename(fname, fname+".uploaded" )
     # evaluate return code from upload
-    if int(ftpRC) == 226: 
+    if int(ftpRC) == 226:
         print('File uploaded to FTP server: ' + file + ". RC:" + ftpRC)
         sendEmail(admin,'File uploaded to FTP server: ', file + "\nwas uploaded to " + hostPath + "\n RC:" + ftpRC)
     else:
@@ -677,9 +721,9 @@ def uploadFTP( file ):
     ftp.quit()
     os.remove(ftpUploadIndicator)       # remove the temporary indicator file again
     os.chdir(curpath)           # go back to current working directory
-    return        
+    return
 
-    
+
 
 
 
@@ -732,9 +776,9 @@ def getTFsensors( ipcon, UID,type='TEMP' ):
             result = AmbientLight(UID, ipcon) # Create device object
             # use result.get_illuminance()/10.0
     except:
-        Logger.exception( "Error! UID", UID, "might be wrong!", sys.exc_info()[0] ) 
+        Logger.exception( "Error! UID", UID, "might be wrong!", sys.exc_info()[0] )
     if result == '':
-        Logger.Warning( "Error! Wrong TYPE parameter for getTFsensors function - " + type ) 
+        Logger.Warning( "Error! Wrong TYPE parameter for getTFsensors function - " + type )
     return result
 
 
@@ -742,9 +786,9 @@ def getTFsensors( ipcon, UID,type='TEMP' ):
 
 ''' ---------------------- physical environment sensing ---------------- '''
 def getLastTempHumid():
-    ''' 
-    read last line of /var/www/th.log.txt 
-    containing the last reading of the temp/humid sensor that is connected to the RaspBerryPi 
+    '''
+    read last line of /var/www/th.log.txt
+    containing the last reading of the temp/humid sensor that is connected to the RaspBerryPi
     '''
     timestampNow = round( datetime.datetime.timestamp( datetime.datetime.now() ))
     try:
@@ -752,7 +796,7 @@ def getLastTempHumid():
     except:
         Logger.exception("getLastTempHumid: Unable to read /var/www/th.log.txt")
         return timestampNow, 9.9
-        
+
     # read last line of logfile
     lineNo = -1
     try:
@@ -760,12 +804,12 @@ def getLastTempHumid():
     except:
         Logger.exception("getLastTempHumid: Failure when trying to read /var/www/th.log.txt")
         return timestampNow, 9.9
-        
+
     # check if we have a complete line
     if len(words)<6:    # sometimes the line is not complete
         lineNo -= 1
         words = thlog[lineNo].split()
-        
+
     # check if we have a valid reading
     # NORMAL: 2015-03-28 11:50:00  Temp:  14.7, RH:  63.0%
     # FAILED: 2015-03-28 11:38:00  Temp:  29.2, RH: 126.6%
@@ -781,7 +825,7 @@ def getLastTempHumid():
         lineNo -= 1
         words = thlog[lineNo].split()
         humid = words[-1].split("%")
-    
+
     try:
         readingTimestamp = datetime.datetime.strptime(words[-6]+'-'+words[-5],"%Y-%m-%d-%H:%M:%S").timestamp()
         return  readingTimestamp, words[-3].split(',')[0] # remove trailing comma!
@@ -815,8 +859,8 @@ def checkHeatingStatus( ipcon, UID=TF_HEATSW_UID, writeLog=False ):
         return (False,False)
     # return the current status (2 values!) as a list
     stat0,stat1='0','0'
-    if status[0]: stat0='1' 
-    if status[1]: stat1='1' 
+    if status[0]: stat0='1'
+    if status[1]: stat1='1'
     if writeLog:  open("./Logfiles/DRstatus.log","w").write( stat0+', '+stat1+" updated "+getTmStmp() )
     return ( status[0], status[1] )
 
@@ -830,15 +874,15 @@ def getWeather(getAll=False):
     except:
         return 99.4
     try:
-        temp = r.json()['main']['temp']-273.15 
+        temp = r.json()['main']['temp']-273.15
     except:
         return 99.3
     # print only 2 decimal digits
-    temp = "{0:.1f}".format(round(temp*10/5)*5/10) 
+    temp = "{0:.1f}".format(round(temp*10/5)*5/10)
     if getAll:
         getAll = r.json()
         return temp, getAll['wind']['speed'], getAll['wind']['deg']
-    return temp 
+    return temp
 
 
 
@@ -854,7 +898,7 @@ def switchHeating( mySQLdbCursorObj, sw1, sw2, eventID, online_id, UID=TF_HEATSW
     except:
         Logger.exception("Unable to read switch status!")
         return
-        
+
     now = datetime.datetime.now()
     if isSw1 == sw1 and isSw2 == sw2:
         Logger.debug("switchHeating: No change! " + str(sw1) +','+ str(sw2) )
@@ -865,7 +909,7 @@ def switchHeating( mySQLdbCursorObj, sw1, sw2, eventID, online_id, UID=TF_HEATSW
     except:
         Logger.exception("Unable to CHANGE switch status!")
         return
-        
+
     # report into mySQL. Example:
     # INSERT INTO `heating_logbook` (`timestamp`, `eventID`, `eventStart`, `estimateOn`, `actualOn`, `actualOff`) VALUES (CURRENT_TIMESTAMP, '', '', '', '14:38:00', '');
     sqlCmd = "INSERT INTO heating_logbook (`eventID`, `actualOn`, `actualOff`)  VALUES ('" + str(eventID) + "', "
@@ -878,7 +922,7 @@ def switchHeating( mySQLdbCursorObj, sw1, sw2, eventID, online_id, UID=TF_HEATSW
     executeSQL( mySQLdbCursorObj, sqlCmd, 'write heating switching time into' )  # local
     #if eventID==0: return   # heating control is on manual, so no event id involved
     # and remote
-    writeApiEventLog( online_id, actOn=actualOn, actOff=actualOff )   
+    writeApiEventLog( online_id, actOn=actualOn, actOff=actualOff )
 
 
 def controlLights( mySQLdbCursorObj, which, onOrOff ):
@@ -906,7 +950,7 @@ def controlLights( mySQLdbCursorObj, which, onOrOff ):
     #if not 'bye' in tnResult:
     print(which, onOrOff, tnResult)
     Logger.info("RESULT FROM controlLights "+str(which)+' '+onOrOff+": "+tnResult)
-        
+
     #  log this into local DB building_logbook
     sql = "INSERT INTO `building_logbook` () VALUES ( NOW(), 'light', 'main', '"+onOrOff+"' )"
     executeSQL( mySQLdbCursorObj, sql, 'protocol light-switching into' )
@@ -923,7 +967,7 @@ def getCurrentTAN( mySQLdbCursorObj ):
     ''' extract current TAN (or seed code) from events DB '''
     try:
         result    = mySQLdbCursorObj.execute("SELECT `seed` FROM `building_events` ORDER BY `timestamp` DESC LIMIT 1; " );
-        if result!=1: 
+        if result!=1:
             Logger.error("getCurrentEvents - Unable to read local DB!" + str(result) )
             return
     except Exception as e:
@@ -934,8 +978,8 @@ def getCurrentTAN( mySQLdbCursorObj ):
 
 
 def checkCurrentEvent( mySQLdbCursorObj ):
-    ''' 
-    Check if an event is currently active 
+    '''
+    Check if an event is currently active
         input:  mySql cursor object
         output: (tuple) eventName, isActive (bool), secondsToStart (can be negative if after the event), sinceEnd, targetTemp
     '''
@@ -946,7 +990,7 @@ def checkCurrentEvent( mySQLdbCursorObj ):
         # we need to get earlier events on the same day first => ORDER BY start
         mySQLdbCursorObj.execute("SELECT * FROM `building_events` WHERE `status`='OK' ORDER BY `start` ; " );
         # should return:
-        #   0   1          2          3       4     5        6      7    8      9        10        11     12   
+        #   0   1          2          3       4     5        6      7    8      9        10        11     12
         #   id	timestamp  online_id  status  seed  weekday  start  end  title  repeats  nextdate  rooms  targetTemp
     except:
         Logger.exception('Unable to read events table from DB!')
@@ -973,11 +1017,11 @@ def checkCurrentEvent( mySQLdbCursorObj ):
                 # event is "active" from 30 mins before start until 30 mins after the end
                 if toStart  < 1800: evtActive = True
                 if sinceEnd > 1800: evtActive = False
-                
+
                 # return values only up to 30 mins after end of event
                 if sinceEnd < 1800:
                     return eventName, evtActive, toStart, room, sinceEnd, targetTemp, eventID, online_id
-    
+
     return '', False, 0, 0, 0, 0, 0, 0
 
 
@@ -988,7 +1032,7 @@ def writeNextEventDate( mySQLdbCursorObj, eventID, online_id ):
     sqlCmd = "SELECT * FROM `building_events` WHERE `id`=" + str(eventID)
     try:
         result = mySQLdbCursorObj.execute( sqlCmd )
-        if result!=1: 
+        if result!=1:
             Logger.error("writeNextEventDate - Unable to read local DB!" + str(result) )
             return
     except Exception as e:
@@ -1002,17 +1046,17 @@ def writeNextEventDate( mySQLdbCursorObj, eventID, online_id ):
     #   if repeat = monthly:    nextEventDate = today +  1 month (might have to be manually corrected ...)
     repeat = evtData[9]
     if repeat == 'once': return     # no need to calculate next date ...
-    
+
     today = datetime.date.today()
-    if repeat == 'weekly':   
+    if repeat == 'weekly':
         diff = datetime.timedelta( days = 7 )
         nextEventDate = (today + diff).strftime("%Y-%m-%d")
-    if repeat == 'biweekly': 
+    if repeat == 'biweekly':
         diff = datetime.timedelta( days =14 )
         nextEventDate = (today + diff).strftime("%Y-%m-%d")
-    if repeat == 'monthly':  
+    if repeat == 'monthly':
         nextEventDate = add_month(today)
-    
+
     # write next event date
     sqlCmd = "UPDATE `building_events` SET `nextdate`='"+str(nextEventDate)+"' WHERE `status`='OK' AND `id`=" + str(eventID)
     executeSQL( mySQLdbCursorObj, sqlCmd, "write next event date into" )
@@ -1037,7 +1081,7 @@ def insertNewEvent( mySQLdbCursorObj, ev, newTAN ):
     if ev['status']  in  [ 'UPDATE', 'DELETE' ]:
         sqlCMD = "UPDATE `building_events` set `status`='OLD' where `online_id`='"+ev['id']+"';"
         executeSQL( mySQLdbCursorObj, sqlCMD )
- 
+
     # insert the update as a new event
     sql = "INSERT INTO `building_events` ( "
     sql+= "`status`,`online_id`,`seed`,`weekday`,`start`,`end`,`title`,`repeats`,`nextdate`,`rooms`,`targetTemp`) VALUES ( 'OK', '"
@@ -1063,7 +1107,7 @@ def reportEstimateOn( mySQLdbCursorObj, timeDiff, eventID, online_id ):
     ''' report estimated heating switch-on time to DB '''
     # first check if the new estimation is way different to the previous one
     mySQLdbCursorObj.execute('SELECT * FROM `heating_logbook` ORDER BY timestamp DESC LIMIT 1')
-    oldData    = mySQLdbCursorObj.fetchone() 
+    oldData    = mySQLdbCursorObj.fetchone()
 
     # calculate estimated switch-on time and timediff from now
     try:
@@ -1073,7 +1117,7 @@ def reportEstimateOn( mySQLdbCursorObj, timeDiff, eventID, online_id ):
 
         # do nothing if last recording was less than 10 minutes ago
         diff       = abs( estimateOn.second + estimateOn.minute*60 + estimateOn.hour * 60 * 60 - oldData[3].seconds )
-        if str(oldData[1]) == str(eventID) and diff < 600: return    
+        if str(oldData[1]) == str(eventID) and diff < 600: return
     except:
         print("ERROR when trying to calculate estimate on", timeDiff, oldData, estimateOn, estOn)
 
@@ -1090,16 +1134,16 @@ def updateLclSettings( lclSQLcursor, lclSettings, rmtSettings ):
 
     for key in rmtSettings:
         if key in ('status', 'seed'): continue    # no need to copy these keys locally
-        try: 
+        try:
             # the following will throw a keyError if the key doesn't exist locally yet
-            if not rmtSettings[key] == lclSettings[key]: 
+            if not rmtSettings[key] == lclSettings[key]:
                 # remote value is different, so update this locally
                 sql = "UPDATE `settings` SET `value`='" +str(rmtSettings[key])+ "' WHERE `key`='" +key+ "'; "
                 executeSQL( lclSQLcursor, sql, "update local settings with online value for key: " + str(key) )
                 print( "Successfully updated local settings with online value for key: " + str(key) )
                 dirty = True
 
-        except KeyError: 
+        except KeyError:
             # key does not yet exist in the local DB, so we insert it:
             sql = "INSERT INTO `settings`( `value`, `key`) VALUES ( '" +str(rmtSettings[key])+ "', '" +key+ "' ); "
             executeSQL( lclSQLcursor, sql, "update local settings with NEW online value for key: "+str(key) )

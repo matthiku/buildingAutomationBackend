@@ -92,8 +92,12 @@ if sys.platform[:5] == 'linux':
 
 
 logDir = ".\\Logfiles\\"
+if onLinux: logDir = "./Logfiles/";
 if not os.path.exists(logDir):
+    print('creating new dir ', logDir)
     os.makedirs(logDir)
+else:
+    print(logDir, 'already exists')
 
 
 
@@ -114,7 +118,6 @@ else:
 
 now = datetime.datetime.now()           # determine log file name
 logName = "buildingControlLog.txt";
-if onLinux: logDir = "./Logfiles/";
 
 file_log_handler = logging.FileHandler( os.path.join(logDir, logName) )
 Logger.addHandler(file_log_handler)
