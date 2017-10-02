@@ -1,6 +1,6 @@
 -- initialize the local database
 
--- Create table building_logs
+-- Create table building_logs (records changes)
 CREATE TABLE IF NOT EXISTS `building_logs` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `what` char(25) COLLATE utf8_unicode_ci NOT NULL,
@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS `building_logs` (
   PRIMARY KEY (`updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- create table temp_logs
-CREATE TABLE IF NOT EXISTS `temp_logs` (
+-- create table building_templog
+CREATE TABLE IF NOT EXISTS `building_templog` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `mainroom` decimal(3,1) NOT NULL,
   `auxtemp` decimal(3,1) NOT NULL,
