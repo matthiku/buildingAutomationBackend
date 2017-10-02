@@ -1,4 +1,4 @@
--- initialize the database
+-- initialize the local database
 
 -- Create table building_logs
 CREATE TABLE `building_logs` (

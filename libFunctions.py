@@ -108,7 +108,7 @@ def getLclSettings(lclSQLcursor):
     settings['source'] = "local"
     return settings
 
-# initialize local DB
+# initialize local DB with SQL from this local file
 def createTables(mySQLcursor):
     file = "buildingControl.sql"
     if not os.path.exists(file):

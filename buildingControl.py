@@ -96,8 +96,6 @@ if onLinux: logDir = "./Logfiles/";
 if not os.path.exists(logDir):
     print('creating new dir ', logDir)
     os.makedirs(logDir)
-else:
-    print(logDir, 'already exists')
 
 
 
