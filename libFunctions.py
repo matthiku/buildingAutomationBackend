@@ -130,9 +130,13 @@ def createTables(mySQLcursor):
             try:
                 mySQLcursor.execute( statement )
             except Exception as e:
-                print(e.args[0], e.args[1])
-                print('Generic problems with the database, check the DB settings!')
-                exit(-1)
+                # ignore data insertion errors - usually the data already exists
+                if e.args[0] == 1062:
+                    print('unable to insert data, maybe it already exists...')
+                else:
+                    print(e.args[0], e.args[1])
+                    print('Generic problems with the database, check the DB settings!')
+                    exit(-1)
             statement = ""
 
 # now read the settings

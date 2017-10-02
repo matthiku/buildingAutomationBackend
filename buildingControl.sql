@@ -9,6 +9,37 @@ CREATE TABLE IF NOT EXISTS `building_logs` (
   PRIMARY KEY (`updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+-- create table temp_logs
+CREATE TABLE IF NOT EXISTS `temp_logs` (
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `mainroom` decimal(3,1) NOT NULL,
+  `auxtemp` decimal(3,1) NOT NULL,
+  `frontroom` decimal(3,1) NOT NULL,
+  `heating_on` tinyint(1) NOT NULL,
+  `power` int(11) NOT NULL,
+  `outdoor` decimal(3,1) NOT NULL,
+  `babyroom` decimal(3,1) NOT NULL,
+  PRIMARY KEY (`updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- create table power_logs
+CREATE TABLE IF NOT EXISTS `power_logs` (
+	`updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`power` INT(11) NOT NULL,
+	`heating_on` TINYINT(1) NOT NULL,
+	`boiler_on` TINYINT(1) NOT NULL,
+	PRIMARY KEY (`updated_at`)
+);
+
+-- create table building_power
+CREATE TABLE IF NOT EXISTS `building_power` (
+	`datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`power` CHAR(5) NOT NULL,
+	`boiler_on` CHAR(1) NOT NULL,
+	`heating_on` CHAR(1) NOT NULL
+) ENGINE=InnoDB;
+
+
 -- Create table events
 CREATE TABLE IF NOT EXISTS `events` (
 	`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -76,33 +107,3 @@ INSERT INTO `settings` (`key`, `value`, `note`) VALUES
   ('status', 'OK', ''),
   ('TFmotionSwUID', 'iSC', ''),
   ('pcMACaddr', '00-19-B9-10-C5-98', '');
-
--- create table temp_logs
-CREATE TABLE IF NOT EXISTS `temp_logs` (
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `mainroom` decimal(3,1) NOT NULL,
-  `auxtemp` decimal(3,1) NOT NULL,
-  `frontroom` decimal(3,1) NOT NULL,
-  `heating_on` tinyint(1) NOT NULL,
-  `power` int(11) NOT NULL,
-  `outdoor` decimal(3,1) NOT NULL,
-  `babyroom` decimal(3,1) NOT NULL,
-  PRIMARY KEY (`updated_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
--- create table power_logs
-CREATE TABLE IF NOT EXISTS `power_logs` (
-	`updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`power` INT(11) NOT NULL,
-	`heating_on` TINYINT(1) NOT NULL,
-	`boiler_on` TINYINT(1) NOT NULL,
-	PRIMARY KEY (`updated_at`)
-);
-
--- create table building_power
-CREATE TABLE IF NOT EXISTS `building_power` (
-	`datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`power` CHAR(5) NOT NULL,
-	`boiler_on` CHAR(1) NOT NULL,
-	`heating_on` CHAR(1) NOT NULL
-) ENGINE=InnoDB;
