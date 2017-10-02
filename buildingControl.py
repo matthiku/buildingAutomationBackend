@@ -32,12 +32,12 @@
 #-------------------------------------------------------------------------------+
 #
 # TODO: - Avoid possible flooding with writeApiPowerLog calls
-# 
+#
 #-------------------------------------------------------------------------------+
 
 
 #-------------------------------------------------
-#          requires Python 3.x 
+#          requires Python 3.x
 #-------------------------------------------------
 # imports -
 # - requests for HTTP etc
@@ -92,11 +92,13 @@ if sys.platform[:5] == 'linux':
 
 
 logDir = ".\\Logfiles\\"
+if not os.path.exists(logDir):
+    os.makedirs(logDir)
 
 
-    
+
 #------------------------------------------------------------------------
-#                                   Logging 
+#                                   Logging
 #------------------------------------------------------------------------
 import logging
 #import logging.config
@@ -104,7 +106,7 @@ import logging
 global Logger
 Logger = logging.getLogger("buildingControl")    # create logger obj with a name of this module
 if len(sys.argv) > 1:
-    Logger.setLevel(logging.DEBUG) 
+    Logger.setLevel(logging.DEBUG)
     print("Debugging is active!")
 else:
     Logger.setLevel(logging.INFO)
@@ -114,7 +116,7 @@ now = datetime.datetime.now()           # determine log file name
 logName = "buildingControlLog.txt";
 if onLinux: logDir = "./Logfiles/";
 
-file_log_handler = logging.FileHandler( os.path.join(logDir, logName) ) 
+file_log_handler = logging.FileHandler( os.path.join(logDir, logName) )
 Logger.addHandler(file_log_handler)
 
 stderr_log_handler = logging.StreamHandler()    # log to the console as well
@@ -128,13 +130,13 @@ stderr_log_handler.setFormatter(formatter)
 
 
 myPID = str(os.getpid())
-txt = __file__ + ' started and PID is: ' + myPID 
+txt = __file__ + ' started and PID is: ' + myPID
 Logger.info( txt )
 broadcast( txt )
 # write PID to pid log file
 PIDfname = os.path.join( logDir, "PID_"+os.path.basename(__file__)+".log" )
 open( PIDfname, "w" ).write( "PID "+myPID+" started "+getTmStmp() )
-    
+
 
 # Logfile for power profiles
 pwrProfileLog = os.path.join(logDir, "powerProfileLog.txt")
@@ -156,7 +158,7 @@ TF_LIGHT_UID    = '7dw'     # light sensor
 ADMIN  = settings['adminEmail']   # recipient of warning/error emails
 
 
-# for WOL, we need MAC address of AVROOM PC 
+# for WOL, we need MAC address of AVROOM PC
 #PC_MAC_ADDR = '00:1e:58:3e:eb:30'
 PC_MAC_ADDR = settings['pcMACaddr'] # '00-19-B9-10-C5-98' AVROOM pc
 
@@ -189,7 +191,7 @@ myFuncChangeDate = os.path.getmtime('libFunctions.py')
 #
 #============================================================================
 
-                        
+
 def signal_handler(signal, frame):
     ''' handle keyboard interrupts '''
     print('Program gracefully ended.')
@@ -200,7 +202,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 
 
-''' EVENT management 
+''' EVENT management
     -------------------------- '''
 def manageOnlineEvents( ):
     ''' Manage online events DB - check if there are updates or changes '''
@@ -215,26 +217,26 @@ def manageOnlineEvents( ):
     for ev in remEvents:
         remTAN.append(ev['seed'])   # add TAN to array
         # check if there is a modification request
-        if ev['status'] in ['NEW', "UPDATE", "DELETE"]: 
+        if ev['status'] in ['NEW', "UPDATE", "DELETE"]:
             modified = True
         # send TAN via email
-        if ev['status'] == "TANREQ" : 
+        if ev['status'] == "TANREQ" :
             sendEmail(ADMIN, "current TAN is "+str(lclTAN), "current TAN was requested")
             return  # no further action needed in this round...
     # no action needed if there is no remote update
-    if not modified: 
+    if not modified:
         Logger.debug("No updates found on remote Events DB")
         return
 
     # -------------------------------------------------------------------
-    # look for valid TAN in remote DB 
+    # look for valid TAN in remote DB
     # -------------------------------------------------------------------
-    if not lclTAN in remTAN: 
+    if not lclTAN in remTAN:
         notifyAll( "Changes were made to online Events DB but TAN " + \
             str(lclTAN) + " was not found in remote DB: " + str(remTAN) )
         return
     Logger.debug( str(lclTAN) + " - TAN was found in remote DB: " + str(remTAN) )
-    
+
     # get the id of the modified record and set status=OK on remote DB via API
     for ev in remEvents:
         if ev['status'] in ['NEW',"UPDATE", "TANREQ", "DELETE"]:
@@ -244,7 +246,7 @@ def manageOnlineEvents( ):
             if ev['status'] == "DELETE" : newStatus = "OLD"
             updateApiEventStatus( ev['id'], newStatus ) # status OK on remote DB
             break     # only process one event at a time!
-    
+
     # -------------------------------------------------------------------
     # modify local DB accordingly
     # -------------------------------------------------------------------
@@ -270,13 +272,13 @@ def getPowerProfile( liste ):
         else: count+=1
         diff  = li-low
     profl[index]=[diff,count]
-    
+
     found = "unknown"
     frProb = mlProb = pcProb = 0
     probability = 0
 
     if len(profl)>2:
-    
+
         # analyse the element sequence (usage by seconds) in the profile
         for el in profl:
 
@@ -284,7 +286,7 @@ def getPowerProfile( liste ):
             cnt = profl[el][1]
 
             # check for avroomPC profile
-            if pcProb==0: 
+            if pcProb==0:
                 if ( 8 < cnt < 22) and (18 < usg < 26): pcProb=40
                 if ( 8 < cnt < 22) and (56 < usg < 60): pcProb=50
                 if (18 < cnt < 22) and (18 < usg < 27): pcProb=50
@@ -302,18 +304,18 @@ def getPowerProfile( liste ):
                 if usg < 105 or usg > 141: pcProb = 0
 
             # check for fridge profile
-            if frProb==0: 
+            if frProb==0:
                 if (12 < cnt < 14) and (235 < usg < 237): frProb=50
                 if (16 < cnt < 26) and (103 < usg < 180): frProb=50
                 if (21 < cnt < 25) and ( 86 < usg < 100): frProb=50
                 if (21 < cnt < 23) and ( 69 < usg <  71): frProb=50
-            elif frProb==50: 
+            elif frProb==50:
                 if (cnt >  5) and (58 < usg < 80): frProb=100
                 if (cnt >  0) and (58 < usg < 72): frProb= 90
                 if (cnt > 20) and (60 < usg < 68): frProb=100
 
             # check for main lights profile
-            if mlProb==0: 
+            if mlProb==0:
                 if ( 2 < cnt <  7) and (889 < usg < 899): mlProb=40
                 if (12 < cnt < 14) and (840 < usg < 845): mlProb=50
             if mlProb==40:
@@ -325,23 +327,23 @@ def getPowerProfile( liste ):
         if frProb>=90: found="fridge"
         if mlProb>=40: found="mainLight"
         if pcProb>=40: found="AVRoomPC"
-        
+
         probability = max(frProb,mlProb,pcProb)
-        
+
         # save profile for further analysis  ###### DEACTIVATED as of 25-11-2015 ########
         #with open( pwrProfileLog, "a") as f:
         #    f.write( getTmStmp()+" Cur.Pwr("+str(liste[-1])+") Suspect("+found+", "+str(probability)+'%) '+str(profl)+"\r\n" )
         #    f.close()
-    
+
     return found, probability, profl
-            
+
 def analyzePowerData( list ):
-    ''' 
+    '''
     Analyze Power data - any hikes?
         ARGS:     list of recent power usage values (watt readings)
     '''
-    
-    # no data analysis when: 
+
+    # no data analysis when:
     #   a) not enough data,
     #   b) event active or
     #   c) heating on
@@ -349,21 +351,21 @@ def analyzePowerData( list ):
       ( len(list) < listSize \
         or watch['eventHasStarted'] \
         or watch['heatingActive']    ):
-            return 
-    
+            return
+
     # find and retain the lowest Watts value
     if min(list) > watch['lowestWatts']: watch['lowestWatts'] = min(list)
     if max(list) < watch['lowestWatts']: watch['lowestWatts'] = min(list)
-    
-    # no data analysis when: 
+
+    # no data analysis when:
     #   d) all values are (nearly) identical!
     Logger.debug("Power min/max diff.: " + str(abs( max(list) - min(list) )))
     if abs( max(list) - min(list) ) < 5:
         watch['powerAlert'] = False
-        watch['trustedApplianceRunning'] = False   
-        watch['pwrAlertSuspicion'] = False   
+        watch['trustedApplianceRunning'] = False
+        watch['pwrAlertSuspicion'] = False
         return
-    
+
     # check for known power-usage pattern
     appliance, probability, powerProfile = getPowerProfile(list)
 
@@ -371,11 +373,11 @@ def analyzePowerData( list ):
     # recent change from profile:
     recentChg      = powerProfile[len(powerProfile)-1][0]
     changeDuration = powerProfile[len(powerProfile)-1][1]
-    
+
     if watch['trustedApplianceRunning']:
         return
-    
-    if appliance=="fridge" or appliance=='AVRoomPC' and probability>90: 
+
+    if appliance=="fridge" or appliance=='AVRoomPC' and probability>90:
         watch['pwrAlertSuspicion']  = False
         watch['trustedApplianceRunning'] = True
         text = appliance + " now using " + str(recentChg) + " Watts since " + str(changeDuration) + " secs. Total Usage: " + str(currentUsage) + " Watts."
@@ -383,21 +385,21 @@ def analyzePowerData( list ):
         Logger.debug(text)
         if currentUsage > 230:
             return
-           
+
     # power is back to normal?
     if currentUsage < 231:
-        if watch['powerAlert']: 
+        if watch['powerAlert']:
             Logger.debug( "==== stopped power alert =====")
         watch['powerAlert'] = False
-        watch['trustedApplianceRunning'] = False   
-        watch['pwrAlertSuspicion'] = False   
+        watch['trustedApplianceRunning'] = False
+        watch['pwrAlertSuspicion'] = False
         return
-       
-    
+
+
     # We have a power usage increase
     if currentUsage - list[0] > 5:
         Logger.debug( "Power surge! Susp.appl.(" + appliance + ", probab. " + str(probability) + "%) PowerProfile: " + str(powerProfile) )
-    
+
     if appliance=="fridge" or appliance=='AVRoomPC' and probability<=90:
         # we are not 100% sure yet that it's our watch['trustedApplianceRunning'] ...
         # Let's wait for another reading
@@ -407,17 +409,17 @@ def analyzePowerData( list ):
     # PowerAlert suspicion was NOT confirmed, so we must have another, unknown appliance running!
     if watch['pwrAlertSuspicion']:
         Logger.debug( "PowerAlert suspicion was NOT confirmed, so we must have another, unknown appliance running! " + str(powerProfile) )
-    
+
     # is average of last 50 readings 25% above previous avg?
     #recentHigh = getListAvg(list[-60:])
-    
+
     Logger.debug("recent high: " + str(recentChg) + " - power alert? " + str(watch['powerAlert']) + " PowerProfile: " + str(powerProfile) )
-    
+
     if not watch['powerAlert'] and not watch['trustedApplianceRunning']:
         if recentChg>5 and changeDuration>30:
-            Logger.debug( "buildingControl.py power alert!\r\nUsage now at " + str(recentChg) + 
+            Logger.debug( "buildingControl.py power alert!\r\nUsage now at " + str(recentChg) +
                        "\r\nsuspected appliance is " + appliance + "\r\nPowerProfile: " + str(powerProfile))
-            #Logger.setLevel(logging.DEBUG) 
+            #Logger.setLevel(logging.DEBUG)
             watch['powerAlert'] = False
             return
 
@@ -430,24 +432,24 @@ def checkMotionActivity( tfLCD ):
     switch off the light if there was no motion in the last 5 mins (600 seconds) '''
     # read motion action file
     lastAction = getLastAction()
-    # if last action wasn't switching on, 
+    # if last action wasn't switching on,
     if ( lastAction[2].upper() != 'ON' ): return
-    
+
     # convert first item in list to a floating number
     try:
         lastActionTime = float(lastAction[0])
     except:
         Logger.error("Failed to convert motionActionFile content to float: %s", lastAction[0])
-        return                
-        
+        return
+
     Logger.debug("Last motion-triggered activity was @ " +
-                 str(datetime.datetime.fromtimestamp(lastActionTime)) + 
+                 str(datetime.datetime.fromtimestamp(lastActionTime)) +
                  ", action: " + str(lastAction[1]) + " " + str(lastAction[2]) )
     # get last motion time
     now  = datetime.datetime.now()
     lastMotion = getLastMotion()
     Logger.info('Time since last motion: '+str( int(now.timestamp()-lastMotion) )+
-              's, more than 300?'+str(now.timestamp()-lastMotion > 300)+' (Last action was:'+lastAction[2].upper() ) 
+              's, more than 300?'+str(now.timestamp()-lastMotion > 300)+' (Last action was:'+lastAction[2].upper() )
     # check if sufficient time has passed since last motion in the room
     #    and the last motion action was to switch on the lights
     #       if yes, switch off the light again
@@ -474,7 +476,7 @@ def checkMotionActivity( tfLCD ):
         aF = open( motionActionFile, 'w' )        # write this action to action file
         aF.write( str(now.timestamp()) + ', light, off, ' + now.strftime("%Y-%m-%d %H:%M:%S") )
         aF.close()
-        
+
         tfLCD.backlight_off()
 
 def getLastAction():
@@ -483,7 +485,7 @@ def getLastAction():
         file = open(motionActionFile)
     except:
         Logger.error("Error when opening motion action file in checkMotionActivity!")
-        return 0,"Nothing","ON"    # we assume the worst and pretend the light was switched on ...       
+        return 0,"Nothing","ON"    # we assume the worst and pretend the light was switched on ...
     # read the file - format is: timestamp, what, onOrOff
     try:
         lastAction = file.read().split(', ')
@@ -500,11 +502,11 @@ def getLastAction():
     return lastAction
 
 def getLastMotion( update=False ):
-    ''' 
-    get last motion timestamp 
+    '''
+    get last motion timestamp
        or
     if the argument is True:
-       => write new motion timestamp 
+       => write new motion timestamp
     '''
     # fictitious datetime for last motion
     lastMotion = 1388534400.0
@@ -537,11 +539,11 @@ def cb_motion_detected():
     lastMotion = getLastMotion(True)    # write a new motion timestamp
     now  = datetime.datetime.now()
     diff = int( now.timestamp() - int(lastMotion) )
-    lmt  = datetime.datetime.fromtimestamp(float(lastMotion)).strftime("%Y-%m-%d %H:%M:%S") 
+    lmt  = datetime.datetime.fromtimestamp(float(lastMotion)).strftime("%Y-%m-%d %H:%M:%S")
     Logger.info("Motion Detected! Last motion was " + formatSeconds(diff) + " ago at " + lmt )
     lastAction = getLastAction()[2].upper()
     # DO NOTHING if last motion was more than 5 minutes (300 secs) ago and last action was "ON"
-    if diff < 300 and lastAction == "ON": 
+    if diff < 300 and lastAction == "ON":
         Logger.info("Motion: No action needed, light was switched on less than 5 minutes ago")
         return
     Logger.info( "---- New motion detected, ACTION needed! ----")
@@ -553,20 +555,20 @@ def cb_motion_detected():
     if lastAction == "ON" and watch['eventHasStarted'] and str(room).find('1')>=0:
         Logger.info("Motion: No action needed, EVENT is active and light should already be on...")
         return
-        
+
     # wake up PC to enable camera recording  MKS 2015-02-10 disabled, not needed atm
     #wake_on_lan(PC_MAC_ADDR)
-    
+
     # open file to write motionAction
     actionFile = open(motionActionFile, 'w')
     # for activity in main room, switch on all lights
-    if ( watch['eventHasStarted'] 
-         and str(room).find('1')>=0 
-         and toStart < 1800 
-         and toStart > 0 
+    if ( watch['eventHasStarted']
+         and str(room).find('1')>=0
+         and toStart < 1800
+         and toStart > 0
         ):
         controlLights( lclSQLcursor, 'light,SpotPulpit,spot', 'on')
-        action = str(now.timestamp()) + ', all, on' 
+        action = str(now.timestamp()) + ', all, on'
     # otherwise, just switch on the main light
     else:
         controlLights( lclSQLcursor, 'light', 'on')                 # use - controlLights() - asap!
@@ -586,19 +588,19 @@ def cb_detection_cycle_ended():
 ''' Acquire recorded values from mySQL DB '''
 def raspiTemp( cur ):
     ''' read latest temp value from Raspi '''
-    timestampNow = round( datetime.datetime.timestamp( datetime.datetime.now() )) 
+    timestampNow = round( datetime.datetime.timestamp( datetime.datetime.now() ))
     # first, try to get data via logfile
     ts, temp = getLastTempHumid()
     age = timestampNow - ts
-    
+
     # TODO! once babyTemp is back online ....
     return temp
-    
+
     if age > 900:
         # try to get value from mySQL DB
         cur.execute("SELECT `ComputerTime`, `Temperature` FROM `TempHumid` ORDER BY `ComputerTime` DESC LIMIT 1" );
         r = cur.fetchone()
-        age = timestampNow - r[0] 
+        age = timestampNow - r[0]
         if age>900:
             Logger.info( "babyroom temp data is outdated! " + formatSeconds(age) + ' old: ' + \
                 datetime.datetime.fromtimestamp(r[0]).strftime("%Y-%m-%d %H:%M:%S") + ', ' + str(r[1]) )
@@ -612,7 +614,7 @@ def getLastTempValues( cur ):
     outdoor = 99.1
     if result>0: outdoor = cur.fetchone()[0]
     else: print('getLastTempValues error:', result)
-    
+
     # read CURRENT temp sensor values
     sql = 'SELECT * FROM `sensors` ORDER BY computertime DESC LIMIT 1; '
     result = cur.execute( sql )
@@ -648,14 +650,14 @@ def getTFsensValues(lclSQLcursor):
 def checkForRecordingFile():
     ''' TODO !!
     Check if there is a file in the upload folder
-    if yes, launch FTP upload in separate thread! 
+    if yes, launch FTP upload in separate thread!
     '''
     files = glob.glob("..\\" + editedRecFilePath + "\\*.mp3")
     if len(files)==0: return    # return if nothing was found
     if os.path.isfile("..\\" + editedRecFilePath + '\\' + ftpUploadIndicator):
         Logger.info( "Uploading still ongoing for file " + files[0] )
         return
-    Logger.info( "Found file for ftp upload: " + str(files) )    
+    Logger.info( "Found file for ftp upload: " + str(files) )
     # use process to allow running the upload in the background
     p = Process(target=uploadFTP, args=(files[0],))
     p.start()
@@ -683,7 +685,7 @@ def writeToLCD( line, text, ):
             tfLCD.backlight_off()
     except:
         pass
-    
+
 
 
 
@@ -717,14 +719,14 @@ try:
 except  Exception as e:
     errmsg = str(traceback.format_exception( *sys.exc_info() ))
     Logger.error("TinkerForge connection failed! Reason: " + errmsg )
-tfLCD      = getTFLCD(tfConn)   # LCD bricklet object    
+tfLCD      = getTFLCD(tfConn)   # LCD bricklet object
 tfMD       = getMotion(tfConn)  # Motion bricklet object
 
 # Register motion detection callback function
 tfMD.register_callback(tfMD.CALLBACK_MOTION_DETECTED, cb_motion_detected)
 
-# Register detection cycle ended callback 
-tfMD.register_callback(tfMD.CALLBACK_DETECTION_CYCLE_ENDED, cb_detection_cycle_ended)  
+# Register detection cycle ended callback
+tfMD.register_callback(tfMD.CALLBACK_DETECTION_CYCLE_ENDED, cb_detection_cycle_ended)
 
 # get variouse TF sensor objects
 tfMainTemp = getTFsensors(tfConn,TF_MAINTEMP_UID)
@@ -742,7 +744,7 @@ httpSession = requests.Session()                # create the httpSession object
 watts       = getCurrentPower( httpSession )    # get the initial reading
 
 # some global variables
-count  = 0;  # counter for the loop    
+count  = 0;  # counter for the loop
 recent = []; # collecting recent values to analyse aberrations
 
 # start the list with the last 60 values ^= 1 minute of data
@@ -797,38 +799,38 @@ if __name__ == '__main__':
 
 
     while True:
-        
+
         #---------------------------------------------------------------------------------------------------
         # read and evaluate  ==> POWER <==  usage
         #---------------------------------------------------------------------------------------------------
         # extract CURRENT watt value from online data
         watts = getCurrentPower( httpSession );
         # update the list of the last xxx values
-        maxList(recent, watts, listSize);            
+        maxList(recent, watts, listSize);
         # write current power data on LCD
         writeToLCD( 2, "Pwr: "+str(watts)+" Watts" )
 
 
-        
+
         #---------------------------------------------------------------------------------------------------
         # add new POWER values and heating/boiler status to SQL statement
         # when we have 10 values (= 10 seconds), write data into database
         #---------------------------------------------------------------------------------------------------
-        now = datetime.datetime.now()        
+        now = datetime.datetime.now()
         if now.second % 10 == 0:
-        
+
             # get current switches status
             boiler_on, heating_on = checkHeatingStatus(tfConn)
-            
+
             # check for trend changes in POWER usage etc
             if not watch['eventHasStarted'] and not watch['heatingActive']:
                 analyzePowerData( recent );
-            
+
             # build SQL statement
             sql += "('" + now.strftime("%Y-%m-%d %H:%M:%S") + "', "
             sql += str(watts) +', '+ str(boiler_on) +', '+ str(heating_on) + ");"
             executeSQL( lclSQLcursor, sql, 'record power data into' )
-            # initialize SQL statment            
+            # initialize SQL statment
             sql = "INSERT INTO `building_power`(`datetime`,`power`,`boiler_on`,`heating_on`) VALUES "
         else:
             # otherwise, continue to build the SQL statement
@@ -837,20 +839,20 @@ if __name__ == '__main__':
 
 
         #---------------------------------------------------------------------------------------------------
-        # only write to REMOTE DB when value change is bigger than 5 Watt! 
+        # only write to REMOTE DB when value change is bigger than 5 Watt!
         #---------------------------------------------------------------------------------------------------
         if abs(watts - oldWatts) > 2:  # tolerance changed to 5 Watt
             now     = datetime.datetime.now()
             prev    = now - datetime.timedelta(seconds=1)  # get timestamp from previous reading
             boiler_on, heating_on = checkHeatingStatus(tfConn)
-            # write both, the old and new value into the DB using the buildingAPI method 
+            # write both, the old and new value into the DB using the buildingAPI method
             #writeApiPowerLog( str(round(oldWatts,1)), boiler_on, heating_on, prev )
             writeApiPowerLog(                  watts, boiler_on, heating_on,  now )
 
             # retain the previous value
             oldWatts = watts
 
-        
+
         #---------------------------------------------------------------------------------------------------
         # every 5 mins, read the (TF) sensors and switches and manage the EVENTs
         #---------------------------------------------------------------------------------------------------
@@ -858,7 +860,7 @@ if __name__ == '__main__':
 
             # write status into static logfile
             boiler_on, heating_on = checkHeatingStatus(tfConn, writeLog=True)
-        
+
             # get latest values and write them into remote DB
             oldMT, oldFT = mainTemp, fronTemp
             outdoorTemp, mainTemp, fronTemp, heatTemp = getTFsensValues( lclSQLcursor )
@@ -866,14 +868,14 @@ if __name__ == '__main__':
                 #if not oldMT == mainTemp or not oldFT == fronTemp:
             # write data into remote DB
             writeApiTempLog(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on)
-            
-            # write debug info into the logfile 
+
+            # write debug info into the logfile
             Logger.debug( 'Watts:' + str(watts) + ', recentAvg: ' + str(round( getListAvg(recent) )) +
                            "\r\nFridge on? "    + str(watch['trustedApplianceRunning'])     +
                            "\tHeating on? "     + str(watch['heatingActive'])    +
                            "\tPower Alert? "    + str(watch['powerAlert'])       +
                            "\tLowest value: "   + str(watch['lowestWatts'])       )
-            
+
 
 
 
@@ -902,11 +904,11 @@ if __name__ == '__main__':
             #======================#
             #   EVENT MANAGEMENT   #
             #======================#---------------------------------------------------------------
-            # Check for (valid) changes in the online event database 
+            # Check for (valid) changes in the online event database
             #--------------------------------------------------------------------------------------
             manageOnlineEvents( )
 
-            
+
             #--------------------------------------------------------------------------------------
             # check if we have an event going on at the moment
             #--------------------------------------------------------------------------------------
@@ -916,7 +918,7 @@ if __name__ == '__main__':
             # example data returned on the morning of an event:
             # ('Tuesday Night Service', False, 40061, '2', -46361)
 
-            
+
             if todaysEvent!='' and settings['heating']=='AUTO' :
                 # find the current room temp of event room
                 if str(room).find('1') < 0:
@@ -934,9 +936,9 @@ if __name__ == '__main__':
                 increasePerHour = round( (1.5 * (80 + float(outdoorTemp)) / 100), 2 )
                 #
                 # 2. estimated duration of pre-heating is (in hours)
-                #       target temperature minus TARGET ROOM temp divided by increase/hour 
+                #       target temperature minus TARGET ROOM temp divided by increase/hour
                 #
-                heatingDuration = round(  ( targetTemp - float(currentRoomTemp) ) / increasePerHour * 60 * 60  ) # to get seconds 
+                heatingDuration = round(  ( targetTemp - float(currentRoomTemp) ) / increasePerHour * 60 * 60  ) # to get seconds
                 #
                 # 3. check if we are already in the heating phase
                 #
@@ -945,27 +947,27 @@ if __name__ == '__main__':
 
 
                 # report estimated heating switch-on time to DB
-                if toStart-heatingDuration>600 and sinceEnd < 0: 
+                if toStart-heatingDuration>600 and sinceEnd < 0:
                     reportEstimateOn( lclSQLcursor, toStart-heatingDuration, eventID, online_id )
 
-                
+
                 # if program was restarted, we do not know what the heating status is, so we have to check the TF switches!
                 if boiler_on and heating_on: watch['heatingActive'] = True
-                
+
                 #-------------------------------------------------------------------------------------------------
                 # if time to event start is shorter than pre-heating timespan , we need to switch heating on:
                 #-------------------------------------------------------------------------------------------------
                 if toStart < heatingDuration and sinceEnd < 0 and not boiler_on:
                     # we need to switch on heating !!
                     watch['heatingActive'] = True
-                    notifyAll( 
+                    notifyAll(
                                 "Trying to switch on heating for " + todaysEvent + \
                                 ".\n\n (toStart, heatingDuration, sinceEnd) \n" + \
                                 formatSeconds(toStart)+' - '+formatSeconds(heatingDuration)+' - '+formatSeconds(sinceEnd) + \
                                 "\n\nCurrent room temp.: " + str(currentRoomTemp) + "\nTarget room temp.: " + str(targetTemp)
                              )
                     switchHeating( lclSQLcursor, True, True, eventID, online_id )
-                
+
                 # if heating is already on but pre-heating timespan shorter than time until event starts, switch off heating...
                 # (with a tolerance of 10 minutes!)
                 if heating_on and toStart > (heatingDuration+1200) and sinceEnd < 0:
@@ -982,19 +984,19 @@ if __name__ == '__main__':
                     else:
                         switchHeating( lclSQLcursor, False, False, eventID, online_id )
                         watch['heatingActive'] = False
-                
+
                 # if event is ongoing and currentRoomTemp > targetTemp, switch off boiler!
                 if watch['eventHasStarted'] and currentRoomTemp > targetTemp and heating_on:
                     notifyAll("Switching off boiler since event is ongoing and currentRoomTemp > targetTemp!\n\n" +
                                 formatSeconds(toStart) + ' ' + str(currentRoomTemp) + ' ' + str(targetTemp) )
                     switchHeating( lclSQLcursor, True, False, eventID, online_id )
-                
+
                 # if event is ongoing and outdoorTemp > 17, switch off boiler!
                 if watch['eventHasStarted'] and float(outdoorTemp) > 17 and heating_on:
                     notifyAll("Switching off boiler since outdoorTemp > 17!\n\n" +
                                 formatSeconds(toStart) + ' ' + str(currentRoomTemp) + ' ' + str(outdoorTemp) )
                     switchHeating( lclSQLcursor, True, False, eventID, online_id )
-                
+
                 #--------------------------------------------------------------------------------------
                 # switch boiler off 20 minutes after event ended
                 #--------------------------------------------------------------------------------------
@@ -1007,7 +1009,7 @@ if __name__ == '__main__':
                     switchHeating( lclSQLcursor, False, False, eventID, online_id)
                     watch['heatingActive'] = False
                     writeNextEventDate( lclSQLcursor, eventID, online_id )
-                
+
             # make sure heating is OFF when AUTOmation is on and no event active!
             if todaysEvent=='' and settings['heating']=='AUTO':
                 switchHeating( lclSQLcursor, False, False, 0, 0 )
@@ -1015,35 +1017,35 @@ if __name__ == '__main__':
 
             Logger.debug( "Event active? " + str(watch['eventHasStarted']) + ". In room: " + str(room) )
             Logger.debug(" ")
-           
+
 
         #---------------------------------------------------------------------------------------------------
         # only every 60 seconds: check motion activity, check source code change or WOL request
         #---------------------------------------------------------------------------------------------------
         if count % 60 == 0:
-                    
+
             # check if light was switched on triggered by the motion sensor
             # and if no event is active in room 1,
             # switch off the light if there was no motion in the last 5 mins
             if not watch['eventHasStarted'] or ( watch['eventHasStarted'] and str(room).find('1')<0 ):
                 checkMotionActivity(tfLCD)
-            
+
             # every minute check if we need to WOL AVROOM PC
-            if onLinux and settings['source']=='remote' and settings['wol']: 
+            if onLinux and settings['source']=='remote' and settings['wol']:
                 print(settings)
                 Logger.info("settings.xml contained instruction to WOL AVROOM")
                 wake_on_lan( PC_MAC_ADDR )
                 # reset wol field in DB to False
                 #resetWOLinSettings( lclSQLcursor, remoteSQL )
-                
+
             # check if debugging is requested
             if os.path.isfile('debug_off'):
-                Logger.setLevel(logging.INFO) 
-                
+                Logger.setLevel(logging.INFO)
+
             # check if debugging is requested
             if os.path.isfile('debug_on'):
-                Logger.setLevel(logging.DEBUG) 
-                
+                Logger.setLevel(logging.DEBUG)
+
             # check if the script source code has been changed meanwhile
             if ( scriptChangeDate != os.path.getmtime(__file__) ):
                     broadcast(__file__ + " Source code was changed - exiting script...")
@@ -1062,7 +1064,7 @@ if __name__ == '__main__':
         if now.hour == 23 and now.minute > 57:
             break
 
-       
+
         time.sleep(.95)             # wait 1 second
         count+=1                    # loop counter
 
@@ -1077,7 +1079,7 @@ if __name__ == '__main__':
     #conn.close()
     tfConn.disconnect()
     httpSession.close()
-    
+
     # END
     Logger.debug("Ending script gracefully ...")
 
@@ -1086,6 +1088,6 @@ if __name__ == '__main__':
 
 Logger.info('Finished, exitCode is '+str(exitCode) )
 # since program ends here, we can delete the PID file
-os.remove( PIDfname )  
+os.remove( PIDfname )
 broadcast("Ending program with exit code " + str(exitCode) )
 sys.exit(exitCode)
