@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `building_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- create table sensors for logging sensor values
-CREATE TABLE `sensors` (
+CREATE TABLE IF NOT EXISTS `sensors` (
 	`computertime` TIMESTAMP NOT NULL,
 	`heatwater` FLOAT NULL DEFAULT NULL,
 	`frontroom` FLOAT NULL DEFAULT NULL,
