@@ -179,7 +179,9 @@ def writeSensFile(which, value, hw, fr, mn):
     # get previous data from logging file
     try:    oldData = open(os.path.join(logDir,logFn),"r").readline().split(',')
     except: oldData = ('0, last update: ' + getTmStmp()).split(',')
+    #print(oldData)
     oldVal = oldData[0]
+    # TODO: need to check for invalid oldData!
     oldTimestamp = oldData[1].split()[4]
     # calculate value change and time span since last writing into log file
     valDiff = round(abs(float(oldVal) - value),2)

@@ -265,6 +265,10 @@ def printPwrAndSWdata():
     if power > 300: color = 'yellow'
     if power > 500: color = 'red'
     print( "    Power:", hilite(str(power).rjust(5),'none',True) + agetext ) 
+
+    # check if file exists
+    if not os.path.isfile('DRstatus.log'):
+        return 20, False
     
     # now get DR status
     timestamp = round( datetime.datetime.timestamp( now )) 
@@ -363,15 +367,21 @@ def midnightCleanUp():
     # delete DOY subfolder of yesterday!
     yesterDOY=datetime.date.fromordinal(datetime.date.today().toordinal()-1).strftime("%j")
     if os.path.isdir(yesterDOY):
-        shutil.move('./'+yesterDOY,'/tmp/' )     # we simply move the files to the tmp folder
-    
+        try:
+            shutil.move('./'+yesterDOY,'/tmp/' )     # we simply move the files to the tmp folder
+        except:
+            broadcast('failed to move logfile')
+
     # All 'txt' files are moved to the current day-of-the-year subfolder.                                           
     filelist = os.listdir(".")
     os.mkdir(doy)
     for files in filelist:
         if files.endswith(".txt"):
-            shutil.move(files,doy)
-            
+            try:
+                shutil.move(files,doy)
+            except:
+                broadcast('failed to move logfile')
+    
     broadcast("midnight cleanup finished ....")
     sys.exit(0) # now make a clean exit, shell script will restart me!
 
@@ -387,6 +397,7 @@ def getPyProgs():
     for fi in files:
         if fi[:4]=='PID_':      # only read "PID_*"-files
             line = open(fi).read().split()
+            #print(line)
             if len(line)>5:
                 pid = line[1]
                 age = timestamp-int(line[5]) 
@@ -433,8 +444,8 @@ def checkPythonProgs(retry=False):
     if okProgs < 2:
         if not retry:
             print("first try pids:", pids)
-            broadcast("Missing Python progs! Checking again in 60s.")
-            time.sleep(60)
+            broadcast("Missing Python progs! Checking again in 3 minutes.")
+            time.sleep(180)
             checkPythonProgs(True)
             return
         print('-'*75, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") )

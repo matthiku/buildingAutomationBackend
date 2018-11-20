@@ -42,8 +42,8 @@ if sys.platform[:5] == 'linux':
 
 # mySQL database access
 lclSqlSrv = 'localhost'
-lqlSqlUsr = 'james'
-lclSqlPwd = ''
+lqlSqlUsr = 'monitoring'
+lclSqlPwd = 'monitoring'
 lclSqlDB  = 'monitoring'
 
 
@@ -159,6 +159,7 @@ def handleAPIerrors(requestsResult, activity):
 '''
 def getToken():
     r = requests.post(apiItems['url']+'oauth/access_token', data=apiItems['tokenRequest'])
+    print(r)
     if r.status_code == 200:
         apiItems['accToken'] = r.json()['access_token']
         return r.json()['expires_in']

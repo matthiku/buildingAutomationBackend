@@ -1,4 +1,4 @@
-#!/usr/bin/env python 3﻿.4
+#!/usr/bin/env python3
 #
 #===============================================================================+
 #                        buildingControl.py                                     |
@@ -565,7 +565,7 @@ def cb_motion_detected():
          and toStart < 1800 
          and toStart > 0 
         ):
-        controlLights( lclSQLcursor, 'light,SpotPulpit,spot', 'on')
+        controlLights( lclSQLcursor, 'light,SpotPulpit', 'on')
         action = str(now.timestamp()) + ', all, on' 
     # otherwise, just switch on the main light
     else:
@@ -677,7 +677,7 @@ def writeToLCD( line, text, ):
         tfLCD.write_line(line,0,text)
         # always write the time ...
         tfLCD.write_line( 0, 15, now.strftime("%H:%M") )
-        if watch['powerAlert'] or watts > 600:
+        if watch['powerAlert'] or watts > 250:
             tfLCD.backlight_on()
         else:
             tfLCD.backlight_off()
@@ -777,7 +777,7 @@ writeApiPowerLog(watts, boiler_on, heating_on, now)
 time.sleep(1)           # wait a moment ...
 
 # start building a new SQL statement
-sql = "INSERT INTO `building_power`(`datetime`,`power`,`boiler_on`,`heating_on`) VALUES "
+sql = "INSERT INTO `building_power` (`datetime`,`power`,`boiler_on`,`heating_on`) VALUES "
 
 # can change, will then trigger a reboot
 exitCode = 0
@@ -803,6 +803,11 @@ if __name__ == '__main__':
         #---------------------------------------------------------------------------------------------------
         # extract CURRENT watt value from online data
         watts = getCurrentPower( httpSession );
+
+        # sometimes the reding fails...
+        if watts == 0:
+            watts = oldWatts;
+
         # update the list of the last xxx values
         maxList(recent, watts, listSize);            
         # write current power data on LCD
@@ -931,7 +936,7 @@ if __name__ == '__main__':
                 #       factoring in a slower increase for a colder outdoor temperature
                 #       e.g., at 20ºC, the factor is 1.0 or 100%, at 0ºC, the factor is 0.8 or 80%
                 #
-                increasePerHour = round( (1.5 * (80 + float(outdoorTemp)) / 100), 2 )
+                increasePerHour = round( (2 * (80 + float(outdoorTemp)) / 100), 2 )
                 #
                 # 2. estimated duration of pre-heating is (in hours)
                 #       target temperature minus TARGET ROOM temp divided by increase/hour 
