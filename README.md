@@ -10,6 +10,14 @@ This module reads/manipulates the various sensors and actors and monitors the ev
 * Python 3.x scripts
 * Shell scripts for Linux
 
+**Required Python packages**
+* requests
+* pymysql
+* tinkerforge
+* psutil
+
+Also utilizes the DropboxUploader tool, see https://www.raspberrypi.org/magpi/dropbox-raspberry-pi/
+
 **An overview of the modules used**
 ![this diagram](https://github.com/matthiku/buildingAutomationBackend/blob/master/Hardware%20Layout.png)
 
