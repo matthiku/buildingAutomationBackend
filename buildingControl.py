@@ -457,7 +457,8 @@ def checkMotionActivity( tfLCD ):
         w.write( str(now.timestamp()) + ' ' + now.strftime("%Y-%m-%d %H:%M:%S") )
         w.close()
         # check if there was an event in room 1
-        todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id = checkCurrentEvent( lclSQLcursor )
+        #todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id = checkCurrentEvent( lclSQLcursor )
+        todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id = getNextCspotEvent()
         if str(room).find('1')>=0:
             controlLights( lclSQLcursor, 'light,SpotPulpit,spot','off')
             time.sleep(1)   # repeat command to make it sure
@@ -546,7 +547,8 @@ def cb_motion_detected():
         return
     Logger.info( "---- New motion detected, ACTION needed! ----")
     # get current event data (if any)
-    todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id = checkCurrentEvent( lclSQLcursor )
+    #todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id = checkCurrentEvent( lclSQLcursor )
+    todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id = getNextCspotEvent()
     Logger.debug("todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID - " + \
                 todaysEvent+', '+str(watch['eventHasStarted'])+', '+str(toStart)+', '+str(room)+', '+str(sinceEnd)+', '+str(targetTemp)+', '+str(eventID) )
     # DO NOTHING if light is already on and event is on in main room
@@ -915,7 +917,8 @@ if __name__ == '__main__':
             #--------------------------------------------------------------------------------------
             # check if we have an event going on at the moment
             #--------------------------------------------------------------------------------------
-            todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id = checkCurrentEvent( lclSQLcursor )
+            #todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id = checkCurrentEvent( lclSQLcursor )
+            todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id = getNextCspotEvent()
             #print( "todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id" )
             #print( todaysEvent, watch['eventHasStarted'], toStart, room, sinceEnd, targetTemp, eventID, online_id )
             # example data returned on the morning of an event:

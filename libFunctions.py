@@ -923,12 +923,12 @@ def controlLights( mySQLdbCursorObj, which, onOrOff ):
 def getCurrentTAN( mySQLdbCursorObj ):
     ''' extract current TAN (or seed code) from events DB '''
     try:
-        result    = mySQLdbCursorObj.execute("SELECT `seed` FROM `building_events` ORDER BY `timestamp` DESC LIMIT 1; " );
+        result    = mySQLdbCursorObj.execute("SELECT `seed` FROM `building_events` ORDER BY `timestamp` DESC LIMIT 1; " )
         if result!=1: 
             Logger.error("getCurrentEvents - Unable to read local DB!" + str(result) )
             return
     except Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
         Logger.error("getCurrentEvents - Unable to open/read local DB!" + errmsg )
         return
     return mySQLdbCursorObj.fetchone()[0]
@@ -945,7 +945,7 @@ def checkCurrentEvent( mySQLdbCursorObj ):
     try:
         # execute SQL query using the current mySQL connection
         # we need to get earlier events on the same day first => ORDER BY start
-        mySQLdbCursorObj.execute("SELECT * FROM `building_events` WHERE `status`='OK' ORDER BY `start` ; " );
+        mySQLdbCursorObj.execute("SELECT * FROM `building_events` WHERE `status`='OK' ORDER BY `start` ; " )
         # should return:
         #   0   1          2          3       4     5        6      7    8      9        10        11     12   
         #   id	timestamp  online_id  status  seed  weekday  start  end  title  repeats  nextdate  rooms  targetTemp
@@ -981,6 +981,49 @@ def checkCurrentEvent( mySQLdbCursorObj ):
     
     return '', False, 0, 0, 0, 0, 0, 0
 
+def getNextCspotEvent():
+    try:
+        # get next event as data object via c-SPOT API
+        r = requests.get('https://plan.eec.ie/api/plans/next', timeout=4)
+        # problems with http request?
+        if not r.ok or len(r.content) < 500: 
+            return '', False, 0, 0, 0, 0, 0, 0
+    except:
+        return '', False, 0, 0, 0, 0, 0, 0
+
+    now = datetime.datetime.now()
+    event = r.json()
+    eventID = event['id']
+    online_id = int(event['id'])
+    eventName = event['type']['name']
+    eventStart = datetime.datetime.fromisoformat(event['date'])
+    evtActive = False
+    # we only care about events in Main Room or Front Room!
+    room = 0
+    roomName = event['resources'][0]['name']
+    if roomName == "Main Room":
+        room = 1
+    if roomName == "Front Room":
+        room = 2
+
+    if room != 0 and eventStart.date() == now.date():
+        eventEnd = datetime.datetime.fromisoformat(event['date_end'])
+        targetTemp = 21
+        Logger.debug( "Today's event **"+ eventName + "** starts at "+ str(eventStart)+" and ends at " + str(eventEnd) )
+
+        # how many seconds until start of event resp. end of event?
+        toStart = ((eventStart.hour*60 + eventStart.minute) - (now.hour * 60 + now.minute)) * 60
+        sinceEnd = ((now.hour * 60 + now.minute) - (eventEnd.hour * 60 + eventEnd.minute)) * 60
+        
+        # event is "active" from 30 mins before start until 30 mins after the end
+        if toStart  < 1800: evtActive = True
+        if sinceEnd > 1800: evtActive = False
+
+        # return values only up to 30 mins after end of event
+        if sinceEnd < 1800:
+            return eventName, evtActive, toStart, room, sinceEnd, targetTemp, eventID, online_id
+
+    return '', False, 0, 0, 0, 0, 0, 0
 
 def writeNextEventDate( mySQLdbCursorObj, eventID, online_id ):
     '''once an event is over, this function writes the next event date into the local and remote DBs'''
@@ -1018,7 +1061,7 @@ def writeNextEventDate( mySQLdbCursorObj, eventID, online_id ):
     sqlCmd = "UPDATE `building_events` SET `nextdate`='"+str(nextEventDate)+"' WHERE `status`='OK' AND `id`=" + str(eventID)
     executeSQL( mySQLdbCursorObj, sqlCmd, "write next event date into" )
     # also write remotely via API
-    writeApiEventNextdate( online_id, str(nextEventDate) )
+    #writeApiEventNextdate( online_id, str(nextEventDate) ) ## DISABLED as we use c-SPOT data now (2018-11-20)
     return
 
 

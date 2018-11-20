@@ -112,6 +112,7 @@ import subprocess
 import shutil
 
 from libFunctions import checkCurrentEvent
+from libFunctions import getNextCspotEvent
 from libFunctions import getCurrentPower
 from libFunctions import getMySQLconn
 from libFunctions import getWeather
@@ -185,9 +186,15 @@ def getTodaysEvent():
     if conn==-1: 
         print("Unable to get mySQL connection!")
         return
-    cur = conn.cursor()        
+
     # get power and switch status data
-    eventName, evtActive, toStart, room, sinceEnd, targetTemp, eventID, online_id = checkCurrentEvent(cur)
+    #
+    # # old way via local DB
+    #cur = conn.cursor()
+    #eventName, evtActive, toStart, room, sinceEnd, targetTemp, eventID, online_id = checkCurrentEvent(cur) 
+    # new way via c-SPOT API
+    eventName, evtActive, toStart, room, sinceEnd, targetTemp, eventID, online_id = getNextCspotEvent()
+
     if not eventName=='':
         print( "        eventName         | evtActive |    toStart | room |   sinceEnd | targetTemp | eventID" )
         print( hilite( ( 
