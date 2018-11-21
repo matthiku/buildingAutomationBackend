@@ -996,6 +996,9 @@ def getNextCspotEvent():
     eventID = event['id']
     online_id = int(event['id'])
     eventName = event['type']['name']
+    # if it's a generic event type, the actual name is the subtitle
+    if event['type']['generic'] == 1:
+        eventName = event['subtitle']
     eventStart = datetime.datetime.fromisoformat(event['date'])
     evtActive = False
     # we only care about events in Main Room or Front Room!
