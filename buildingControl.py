@@ -103,10 +103,10 @@ global Logger
 Logger = logging.getLogger("buildingControl")    # create logger obj with a name of this module
 if len(sys.argv) > 1:
     Logger.setLevel(logging.DEBUG) 
-    print("Debugging is active!")
+    print("\nDebugging is active!\n")
 else:
     Logger.setLevel(logging.INFO)
-    print("No debugging active!")
+    # print("\nNo debugging active!\n")
 
 now = datetime.datetime.now()           # determine log file name
 logName = "buildingControlLog.txt"
@@ -183,7 +183,7 @@ myFuncChangeDate = os.path.getmtime('libFunctions.py')
                         
 def signal_handler(signal, frame):
     ''' handle keyboard interrupts '''
-    print('Program gracefully ended.')
+    print('\nProgram gracefully ended.')
     sys.exit(0)
 # configure the above function as the signal handler
 signal.signal(signal.SIGINT, signal_handler)
@@ -503,7 +503,7 @@ def getLastMotion( update=False ):
     # this file contains the date of the last encountered motion
     if ( len (glob.glob(motionsFile) ) > 0 ):
         s = open(motionsFile).read().split()    # splite line by words (space limited strings)
-        print('last motion file content:', s)
+        print('\nlast motion file content:', s)
         try:
             lastMotion = float( s[0] )
         except:
@@ -604,7 +604,7 @@ def getLastTempValues( cur ):
     result = cur.execute( sql )
     outdoor = 99.1
     if result>0: outdoor = cur.fetchone()[0]
-    else: print('getLastTempValues error:', result)
+    else: print('\ngetLastTempValues error:', result)
     
     # read CURRENT temp sensor values
     sql = 'SELECT * FROM `sensors` ORDER BY computertime DESC LIMIT 1; '
@@ -1011,7 +1011,7 @@ if __name__ == '__main__':
             
             # every minute check if we need to WOL AVROOM PC
             if onLinux and settings['source']=='remote' and settings['wol']: 
-                print(settings)
+                print('settings:', settings, '\n')
                 Logger.info("settings.xml contained instruction to WOL AVROOM")
                 wake_on_lan( PC_MAC_ADDR )
                 # reset wol field in DB to False
