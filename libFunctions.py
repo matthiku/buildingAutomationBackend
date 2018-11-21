@@ -161,12 +161,12 @@ def handleAPIerrors(requestsResult, activity):
 '''
 def getToken():
     r = requests.post(apiItems['url']+'oauth/access_token', data=apiItems['tokenRequest'])
-    print('\ngetToken, response: ', r)
+    # print('\ngetToken, response: ', r)
     if r.status_code == 200:
         apiItems['accToken'] = r.json()['access_token']
         return r.json()['expires_in']
     else:
-        print('\ngetToken problem, result: ', r.text, '\n')
+        print('\ngetToken problem, result: ', r.text, '\nStatus code:', r.status_code, '\n\n')
 
 
 ''' access token handling '''
@@ -595,7 +595,7 @@ def broadcast( text ):
     lines = str(text).splitlines() 
     text = now.strftime("%Y-%m-%d %H:%M:%S") + ' - ' + __file__ + "\n" + lines[0]
     if onLinux: subprocess.call('echo "' + text + '"| wall -n', shell=True )
-    print('\nbroadcast - result', text)
+    # print('\nbroadcast - result', text, '\n')
     index = 1
     while index < len(lines):
         if onLinux: subprocess.call('echo "' + lines[index] + '"| wall -n', shell=True )
