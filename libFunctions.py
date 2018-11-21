@@ -3,7 +3,7 @@
 
 import sys, os, traceback, logging
 import subprocess, re, psutil
-import pymysql, ftplib
+import pymysql
 
 import datetime, time, calendar
 import json
@@ -161,11 +161,12 @@ def handleAPIerrors(requestsResult, activity):
 '''
 def getToken():
     r = requests.post(apiItems['url']+'oauth/access_token', data=apiItems['tokenRequest'])
-    print(r)
+    print('\ngetToken, response: ', r)
     if r.status_code == 200:
         apiItems['accToken'] = r.json()['access_token']
         return r.json()['expires_in']
-    print(r.text)    
+    else:
+        print('\ngetToken problem, result: ', r.text, '\n')
 
 
 ''' access token handling '''
@@ -187,7 +188,7 @@ def updateSettingsStatus():
     if not r.status_code == 202: # 201=new record created
         handleAPIerrors(r, "update settings status on")
         return
-    print( "Settings STATUS was updated to OK. API call Result: " + str(r.json()) )
+    print( "\nSettings STATUS was updated to OK. API call Result: " + str(r.json()) )
 
 
 ''' get configuration settings '''
@@ -200,7 +201,7 @@ def getSettings( lclSQLcursor ):
     if not r.status_code == 200:
         handleAPIerrors(r, "read settings table from")
         # since online settngs are unavailable, fall back to local settings backup
-        print("remote settings query failed!")
+        print("\nremote settings query failed!\n")
         return getLclSettings(lclSQLcursor)
 
     # returned data is in JSON format
@@ -224,7 +225,7 @@ def getSettings( lclSQLcursor ):
         return settings
     
     if settings['status'] == 'UPDATE' and not settings['seed'] == settingsTAN:     # invalid remote TAN ...
-        print("remote settings not accepted, wrong TAN:", settings['seed'] ,"Should be:", settingsTAN)
+        print("\nremote settings not accepted, wrong TAN:", settings['seed'] ,"Should be:", settingsTAN, '\n')
 
     return getLclSettings(lclSQLcursor)     # ignore remote settings
 
@@ -267,7 +268,7 @@ def writeApiTempLog( outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_o
         'access_token' : apiItems['accToken']  }
     r = requests.post(apiItems['url']+'templog', data=payload)
     if not r.status_code == 201: # 201=new record created
-        print(outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on)
+        print('\noutdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on', outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on)
         handleAPIerrors(r, "write tempLog data t")
 
 
@@ -303,7 +304,7 @@ def writeApiEventNextdate( id, nextdate ):
     print("# "*90)
     payload = { 'access_token' : apiItems['accToken']  }
     r = requests.patch( apiItems['url']+'events/'+str(id)+'/nextdate/'+nextdate, data=payload )
-    print(r.text)
+    print('writeApiEventNextdate - result: ', r.text, '\n')
     if not r.status_code == 202: # 202= record updated
         handleAPIerrors(r, "write event nextdate via")
 
@@ -527,12 +528,12 @@ def get_processes_running( processname ):
         if len(fields) > 2:
             line = fields.decode(encoding='UTF-8', errors='ignore').split()
             if line[0].upper().find(processname) >= 0:
-                print(processname + " is running - " + " ".join(line) )
+                print('\n', processname + " is running - " + " ".join(line) )
                 isRunning += 1
     if isRunning > 0:
-        print(str(isRunning) + " instance(s) of " + processname + " are running!" )
+        print(str(isRunning) + " instance(s) of " + processname + " are running!\n" )
     else:
-        print(processname + " is NOT running!" )
+        print(processname + " is NOT running!\n" )
     return isRunning
 
 
@@ -594,7 +595,7 @@ def broadcast( text ):
     lines = str(text).splitlines() 
     text = now.strftime("%Y-%m-%d %H:%M:%S") + ' - ' + __file__ + "\n" + lines[0]
     if onLinux: subprocess.call('echo "' + text + '"| wall -n', shell=True )
-    print(text)
+    print('\nbroadcast - result', text)
     index = 1
     while index < len(lines):
         if onLinux: subprocess.call('echo "' + lines[index] + '"| wall -n', shell=True )
@@ -831,7 +832,7 @@ def controlLights( mySQLdbCursorObj, which, onOrOff ):
         Logger.error("Error when trying to telnet with Dovado Router for Light control! " + errmsg + ' Exception: ' + e )
         return
     #if not 'bye' in tnResult:
-    print(which, onOrOff, tnResult)
+    print('\nwhich, onOrOff, tnResult', which, onOrOff, tnResult)
     Logger.info("RESULT FROM controlLights "+str(which)+' '+onOrOff+": "+tnResult)
         
     #  log this into local DB building_logbook
@@ -1048,11 +1049,11 @@ def reportEstimateOn( mySQLdbCursorObj, timeDiff, eventID, online_id ):
         diff       = abs( estimateOn.second + estimateOn.minute*60 + estimateOn.hour * 60 * 60 - oldData[3].seconds )
         if str(oldData[1]) == str(eventID) and diff < 600: return    
     except:
-        print("ERROR when trying to calculate estimate on", timeDiff, oldData, estimateOn, estOn)
+        print("\nERROR when trying to calculate estimate on", timeDiff, oldData, estimateOn, estOn)
 
     # write it into local DB table
     sql = "INSERT INTO heating_logbook (`eventID`, `estimateOn`)  VALUES ('"+str(eventID) + "', '" + estOn + "');"
-    print(sql)
+    print('\nreportEstimateOn = SQL code: \n', sql, '\n')
     executeSQL( mySQLdbCursorObj, sql, 'write estimated switch-on time into' )
     # write into remote DB table via API
     writeApiEventLog( online_id, estOn=estOn )
@@ -1069,14 +1070,14 @@ def updateLclSettings( lclSQLcursor, lclSettings, rmtSettings ):
                 # remote value is different, so update this locally
                 sql = "UPDATE `settings` SET `value`='" +str(rmtSettings[key])+ "' WHERE `key`='" +key+ "'; "
                 executeSQL( lclSQLcursor, sql, "update local settings with online value for key: " + str(key) )
-                print( "Successfully updated local settings with online value for key: " + str(key) )
+                print( "\nSuccessfully updated local settings with online value for key: " + str(key) )
                 dirty = True
 
         except KeyError: 
             # key does not yet exist in the local DB, so we insert it:
             sql = "INSERT INTO `settings`( `value`, `key`) VALUES ( '" +str(rmtSettings[key])+ "', '" +key+ "' ); "
             executeSQL( lclSQLcursor, sql, "update local settings with NEW online value for key: "+str(key) )
-            print( "Successfully updated local settings with NEW online value for key: "+str(key) )
+            print( "\nSuccessfully updated local settings with NEW online value for key: "+str(key) )
             dirty = True
 
     if dirty:
@@ -1084,10 +1085,10 @@ def updateLclSettings( lclSQLcursor, lclSettings, rmtSettings ):
         newSeed = str(random.randint(10000,99999))
         sql = "UPDATE `settings` SET `value`='" +newSeed+ "' WHERE `key`='seed'; "
         executeSQL( lclSQLcursor, sql, "update local settings with online value for key: " + str(key) )
-        print("Remote settings accepted! New seed:", newSeed )
+        print("\nRemote settings accepted! New seed:", newSeed, '\n' )
         sendEmail(admin, 'Building Control Program Settings Updated', "new TAN is " + newSeed)
     else:
-        print('Remote settings update requested, but no changes found!')
+        print('\nRemote settings update requested, but no changes found!\n')
 
 
 
@@ -1101,5 +1102,5 @@ if __name__ == "__main__":
 
     # with just 1 parameter, it should be a MAC address to send WOL packets to
     if len(sys.argv) == 2:
-        print("Trying to wake-on-LAN for: "+sys.argv[1])
+        print("\nTrying to wake-on-LAN for:", sys.argv[1], '\n')
         wake_on_lan(sys.argv[1])
