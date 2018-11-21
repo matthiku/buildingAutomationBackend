@@ -46,6 +46,8 @@ lqlSqlUsr = 'monitoring'
 lclSqlPwd = 'monitoring'
 lclSqlDB  = 'monitoring'
 
+getNextCSpotEventURL = 'https://plan.eec.ie/api/plans/next'
+
 
 # need to have this now, so that we can read the local settings table
 def getMySQLconn( ):
@@ -53,9 +55,9 @@ def getMySQLconn( ):
     try:
         mySqlConn = pymysql.connect(host=lclSqlSrv, port=3306, user=lqlSqlUsr, passwd=lclSqlPwd, db=lclSqlDB)
     except Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.info( 'Local mySQL connection failed ... ' + errmsg );
-        sendEmail(admin,'BuildingControl.py', 'local mySQL connection failed ... ' + errmsg )
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
+        Logger.info( 'Local mySQL connection failed ... ' + errmsg )
+        sendEmail(admin,'BuildingControl.py', 'local mySQL connection failed ... ' + errmsg + ' ' +  e )
         # raise
         return -1
     # return the mySQL connection object
@@ -72,8 +74,8 @@ def executeSQL(mySQLdbCursorObj, sqlCmd, taskDescription="access" ):
         if sqlCmd.split()[0] != "SELECT":
             mySQLdbCursorObj.execute("COMMIT; ")
     except Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.error( sqlCmd + "Unable to " + taskDescription + " local DB!" + errmsg  + " RESULT was: " + str(result) )
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
+        Logger.error( sqlCmd + "Unable to " + taskDescription + " local DB!" + errmsg  + " RESULT was: " + str(result) + ' Error: ' + e )
 
 
 # define method to read settings from local DB
@@ -368,7 +370,7 @@ def maxList( list, newElem, max ):
         list.reverse()
         list.pop()
         list.reverse()
-    return list;
+    return list
 
 
 def getListAvg( list ):
@@ -425,7 +427,7 @@ def computerOnline( name ):
     #   Wait for process to terminate
     #   The optional input argument should be a string to be sent to the child process, or None, if no data should be sent to the child
     # Talk with date command i.e. read data from stdout and stderr. Store this info in tuple
-    (output, err) = p.communicate()
+    p.communicate()
     # Wait for date to terminate. Get return returncode
     p_status = p.wait()
     # check return code
@@ -508,10 +510,10 @@ def isRunning( procName ):
         input:  process name or parts thereof
         output: True or False
     '''
-    procList = [psutil.Process(i) for i in psutil.get_pid_list()]
-    for i in procList:
+    # procList = [psutil.Process(i) for i in psutil.get_pid_list()]
+    for proc in psutil.process_iter(attrs=['pid', 'name', 'username']):
         try:
-            if procName in i.name(): return True
+            if procName in proc.info['name']: return True
         except psutil.AccessDenied: pass
     return False
 
@@ -539,7 +541,7 @@ def internet_on():
     url='http://google.com'
     request = urllib.request.Request(url)
     try:
-        response = urllib.request.urlopen(request,timeout=1)    
+        urllib.request.urlopen(request,timeout=1)    
         return True
     except: pass
     Logger.error("=== No connection to the Internet! ===")
@@ -581,8 +583,8 @@ def sendEmail( destination, subject, content ):
             conn.close()
 
     except Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.info( "error when trying to send email: " + errmsg );
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
+        Logger.info( "error when trying to send email: " + errmsg + ' Exception: ' + e )
         sys.exit( "mail failed; %s" + errmsg ) # give a error message
 
 
@@ -609,98 +611,22 @@ def notifyAll( text, subject="Building Control Notification" ):
 
 
 
-''' ----------------  special task forces  ------------------ '''
-def uploadFTP( file ):
-    ''' upload file via ftp '''
-
-    # check if file exists
-    if ( not os.path.isfile(file) ):
-        Logger.error("uloadFTP: file not found: " + file)
-        return
-    print("Beginning FTP upload background job with", file)
-    
-    curpath = os.getcwd()               # store current path
-    fpath, fname = os.path.split(file)  # get path and name separated
-    os.chdir(fpath)                     # change working dir to fpath
-    tt = open(ftpUploadIndicator,'w')
-    tt.write('currently uploading: '+fname)
-    tt.close()
-    
-    # build ftp command set
-    ftp = ftplib.FTP("ftp1.reg365.net")
-    ftp.login("ennisevangelicalchurch.org", "Tha!land:01")
-    ftp.cwd("web/jdownloads/")
-    
-    # work out host path according to file type and day of week
-    filename, file_extension = os.path.splitext( file )
-    if file_extension.lower() == '.mp3':
-        ftp.cwd('Sermon Recordings')
-        # presume type of file depending on day of week!
-        now = datetime.datetime.now()
-        if ( now.weekday() > 1 and now.weekday() < 6 ):
-            if (filename.find("Judges")>0):
-                hostPath = 'bible study teaching/Judges Series'
-            else:
-                hostPath = 'bible study teaching'
-        else:   
-            hostPath = 'sunday service teaching'
-            if (filename.find("Ephesians")>0):
-                hostPath = 'sunday service teaching/Ephesians Series'
-            if (filename.find("Genesis")>0):
-                hostPath = 'sunday service teaching/Genesis Series'
-            if (filename.find("John")>0):
-                hostPath = 'sunday service teaching/Gospel of John Series'
-                
-        ftp.cwd(hostPath)
-        
-    # Path for Newsletters
-    if file_extension.lower() == '.pdf':
-        ftp.cwd('Documents and Newsletters')
-        ftp.cwd('Newsletter')
-        hostPath = 'Newsletter'
-        
-    # rename local file to remove special characters
-    os.rename(fname, fname.replace("'", " ") )
-    fname = fname.replace("'", " ")
-        
-    print("About to send FTP upload command to ", hostPath)
-    ftp.storbinary("STOR " + fname, open(fname, "rb"), 1024)
-    ftpRC = ftp.lastresp    
-    # to avoid continuous processing, if upload fails, rename the file in ANY case!
-    os.rename(fname, fname+".uploaded" )
-    # evaluate return code from upload
-    if int(ftpRC) == 226: 
-        print('File uploaded to FTP server: ' + file + ". RC:" + ftpRC)
-        sendEmail(admin,'File uploaded to FTP server: ', file + "\nwas uploaded to " + hostPath + "\n RC:" + ftpRC)
-    else:
-        print('File upload to FTP server failed! File name: ' + file + ". Error code:" + ftpRC)
-        sendEmail(admin,'File uploaded to FTP server failed!', file + '\nError: ' + ftpRC )
-    ftp.quit()
-    os.remove(ftpUploadIndicator)       # remove the temporary indicator file again
-    os.chdir(curpath)           # go back to current working directory
-    return        
-
-    
-
-
-
-
 
 ''' ----------------------  manage TINKERFORGE objects  ------------------------ '''
 def getTFconn( HOST=TF_HOST, PORT=TF_PORT ):
     try:
         ipcon = IPConnection()
     except  Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.info( 'Tinkerforge IPConnection failed ... ' + errmsg );
-        sendEmail(admin,'getPower.py', 'Tinkerforge IPConnection failed ... ' + errmsg )
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
+        Logger.info( 'Tinkerforge IPConnection failed ... ' + errmsg )
+        sendEmail(admin,'getPower.py', 'Tinkerforge IPConnection failed ... ' + errmsg + ' Exception: ' + e )
         sys.exit(-1) # should cause rPi to reboot
     try:
         ipcon.connect(HOST, PORT)
     except  Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.info( 'Tinkerforge unable to connect! ' + errmsg );
-        sendEmail(admin,'getPower.py', 'Tinkerforge unable to connect! ' + errmsg )
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
+        Logger.info( 'Tinkerforge unable to connect! ' + errmsg )
+        sendEmail(admin,'getPower.py', 'Tinkerforge unable to connect! ' + errmsg + ' Exception: ' + e )
         sys.exit(-1) # should cause rPi to reboot
     return ipcon
 
@@ -708,18 +634,18 @@ def getTFLCD( ipcon, UID=TF_LCD_UID ):
     try:
         lcd = LCD20x4(UID, ipcon)
     except  Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.info( 'Tinkerforge LCD object creation failed ... ' + errmsg );
-        sendEmail(admin,'getPower.py', 'Tinkerforge LCD object creation failed ... ' + errmsg )
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
+        Logger.info( 'Tinkerforge LCD object creation failed ... ' + errmsg )
+        sendEmail(admin,'getPower.py', 'Tinkerforge LCD object creation failed ... ' + errmsg + ' Exception: ' + e )
     return lcd
 
 def getMotion( ipcon, UID=TF_MOTION_UID ):
     try:
         md = MotionDetector(UID, ipcon)
     except  Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.info( 'Tinkerforge MotionDetector object creation failed ... ' + errmsg );
-        sendEmail(admin,'getPower.py', 'Tinkerforge MotionDetector object creation failed ... ' + errmsg )
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
+        Logger.info( 'Tinkerforge MotionDetector object creation failed ... ' + errmsg )
+        sendEmail(admin,'getPower.py', 'Tinkerforge MotionDetector object creation failed ... ' + errmsg + ' Exception: ' + e )
     return md
 
 def getTFsensors( ipcon, UID,type='TEMP' ):
@@ -733,7 +659,7 @@ def getTFsensors( ipcon, UID,type='TEMP' ):
             result = AmbientLight(UID, ipcon) # Create device object
             # use result.get_illuminance()/10.0
     except:
-        Logger.exception( "Error! UID", UID, "might be wrong!", sys.exc_info()[0] ) 
+        Logger.exception( "Error! UID '" + UID + "' might be wrong! " + sys.exc_info()[0] ) 
     if result == '':
         Logger.Warning( "Error! Wrong TYPE parameter for getTFsensors function - " + type ) 
     return result
@@ -802,7 +728,7 @@ def getCurrentPower( httpSession ):
         data = json.loads(response.text)
         val = data.get('pwr', -1)
     except:
-        Logger.exception( "Cannot get or decode %s: %s" % (youLessURL, str(e)) )
+        Logger.exception( "Cannot get or decode %s: %s" % (youLessURL) )
     return val
 
 
@@ -861,10 +787,10 @@ def switchHeating( mySQLdbCursorObj, sw1, sw2, eventID, online_id, UID=TF_HEATSW
         Logger.debug("switchHeating: No change! " + str(sw1) +','+ str(sw2) )
         return
     try:
-        result = dr.set_state(sw1, sw2)
-        Logger.info( "Changed switch to " + str(sw1) + ", " + str(sw2) + ". Result: " + str(result) )
-    except:
-        Logger.exception("Unable to CHANGE switch status!")
+        dr.set_state(sw1, sw2)
+        Logger.info( "Changed switch to " + str(sw1) + ", " + str(sw2) )
+    except Exception as e:
+        Logger.exception("Unable to CHANGE switch status! " + e)
         return
         
     # report into mySQL. Example:
@@ -901,8 +827,8 @@ def controlLights( mySQLdbCursorObj, which, onOrOff ):
         tn.write(b"exit\n")
         tnResult = tn.read_all().decode("utf-8")
     except Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.error("Error when trying to telnet with Dovado Router for Light control! " + errmsg)
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
+        Logger.error("Error when trying to telnet with Dovado Router for Light control! " + errmsg + ' Exception: ' + e )
         return
     #if not 'bye' in tnResult:
     print(which, onOrOff, tnResult)
@@ -929,7 +855,7 @@ def getCurrentTAN( mySQLdbCursorObj ):
             return
     except Exception as e:
         errmsg = str(traceback.format_exception( *sys.exc_info() ))
-        Logger.error("getCurrentEvents - Unable to open/read local DB!" + errmsg )
+        Logger.error("getCurrentEvents - Unable to open/read local DB!" + errmsg + ' Exception: ' + e )
         return
     return mySQLdbCursorObj.fetchone()[0]
 
@@ -984,7 +910,7 @@ def checkCurrentEvent( mySQLdbCursorObj ):
 def getNextCspotEvent():
     try:
         # get next event as data object via c-SPOT API
-        r = requests.get('https://plan.eec.ie/api/plans/next', timeout=4)
+        r = requests.get(getNextCSpotEventURL, timeout=4)
         # problems with http request?
         if not r.ok or len(r.content) < 500: 
             return '', False, 0, 0, 0, 0, 0, 0
@@ -1039,8 +965,8 @@ def writeNextEventDate( mySQLdbCursorObj, eventID, online_id ):
             Logger.error("writeNextEventDate - Unable to read local DB!" + str(result) )
             return
     except Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
-        Logger.error("writeNextEventDate - Unable to open/read local DB!" + errmsg )
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
+        Logger.error("writeNextEventDate - Unable to open/read local DB!" + errmsg + ' Exception: ' + e )
         return
     evtData = mySQLdbCursorObj.fetchone()
     # calculate next event date according to repeat pattern
@@ -1071,7 +997,7 @@ def writeNextEventDate( mySQLdbCursorObj, eventID, online_id ):
 def resetWOLinSettings( mySQLdbCursorObj ):
     '''  after a forced WOL, reset wol field in settings table  '''
     try:
-        result = mySQLdbCursorObj.execute( "UPDATE `settings` SET `wol`='0' WHERE `id`=0" )
+        mySQLdbCursorObj.execute( "UPDATE `settings` SET `wol`='0' WHERE `id`=0" )
     except:
         Logger.exception('Unable to reset WOL to 0 in settings table from DB!')
         return 1

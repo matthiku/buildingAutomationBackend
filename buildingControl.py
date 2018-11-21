@@ -55,8 +55,6 @@ import os
 import datetime
 import random
 
-# to enable multiprocessing (ftp-upload in background)
-from multiprocessing import Process
 
 from tinkerforge.ip_connection            import IPConnection
 from tinkerforge.bricklet_lcd_20x4        import LCD20x4
@@ -111,8 +109,8 @@ else:
     print("No debugging active!")
 
 now = datetime.datetime.now()           # determine log file name
-logName = "buildingControlLog.txt";
-if onLinux: logDir = "./Logfiles/";
+logName = "buildingControlLog.txt"
+if onLinux: logDir = "./Logfiles/"
 
 file_log_handler = logging.FileHandler( os.path.join(logDir, logName) ) 
 Logger.addHandler(file_log_handler)
@@ -165,13 +163,6 @@ PC_MAC_ADDR = settings['pcMACaddr'] # '00-19-B9-10-C5-98' AVROOM pc
 motionActionFile   = "motionAction.txt"
 # control file containing a timestamp of the last motion
 motionsFile        = 'lastMotion.txt'
-
-# file that indicates that we're currently uploading a file via FTP
-ftpUploadIndicator = "currentlyUploading.txt"
-
-# Path containing the edited Sunday service recording file for upload via FTP
-editedRecFilePath  = "Exchange\Audio for Uploading"
-
 
 
 # get last modify date of this script
@@ -488,8 +479,8 @@ def getLastAction():
     # read the file - format is: timestamp, what, onOrOff
     try:
         lastAction = file.read().split(', ')
-    except Exception as e:
-        errmsg = str(traceback.format_exception( *sys.exc_info() ));
+    except:
+        errmsg = str(traceback.format_exception( *sys.exc_info() ))
         Logger.info("Error when trying to read motion action file - Wrong format? - " + errmsg)
         file.close()
         return 0, 0, "ON"       # we assume the worst and pretend the light was switched on ...
@@ -598,7 +589,7 @@ def raspiTemp( cur ):
     
     if age > 900:
         # try to get value from mySQL DB
-        cur.execute("SELECT `ComputerTime`, `Temperature` FROM `TempHumid` ORDER BY `ComputerTime` DESC LIMIT 1" );
+        cur.execute("SELECT `ComputerTime`, `Temperature` FROM `TempHumid` ORDER BY `ComputerTime` DESC LIMIT 1" )
         r = cur.fetchone()
         age = timestampNow - r[0] 
         if age>900:
@@ -645,24 +636,6 @@ def getTFsensValues(lclSQLcursor):
     executeSQL( lclSQLcursor, tempSQL, 'write TF sensor values into' )    # write into local DB on Raspi
     return outdoorTemp, mainTemp, fronTemp, heatTemp
 
-
-''' currently unused ... '''
-def checkForRecordingFile():
-    ''' TODO !!
-    Check if there is a file in the upload folder
-    if yes, launch FTP upload in separate thread! 
-    '''
-    files = glob.glob("..\\" + editedRecFilePath + "\\*.mp3")
-    if len(files)==0: return    # return if nothing was found
-    if os.path.isfile("..\\" + editedRecFilePath + '\\' + ftpUploadIndicator):
-        Logger.info( "Uploading still ongoing for file " + files[0] )
-        return
-    Logger.info( "Found file for ftp upload: " + str(files) )    
-    # use process to allow running the upload in the background
-    p = Process(target=uploadFTP, args=(files[0],))
-    p.start()
-    p.join()
-    return
 
 def writeToLCD( line, text, ):
     '''
@@ -744,11 +717,11 @@ httpSession = requests.Session()                # create the httpSession object
 watts       = getCurrentPower( httpSession )    # get the initial reading
 
 # some global variables
-count  = 0;  # counter for the loop    
-recent = []; # collecting recent values to analyse aberrations
+count  = 0  # counter for the loop    
+recent = [] # collecting recent values to analyse aberrations
 
 # start the list with the last 60 values ^= 1 minute of data
-maxList(recent, watts, listSize);
+maxList(recent, watts, listSize)
 
 
 # get current switches status
@@ -804,14 +777,14 @@ if __name__ == '__main__':
         # read and evaluate  ==> POWER <==  usage
         #---------------------------------------------------------------------------------------------------
         # extract CURRENT watt value from online data
-        watts = getCurrentPower( httpSession );
+        watts = getCurrentPower( httpSession )
 
         # sometimes the reding fails...
         if watts == 0:
-            watts = oldWatts;
+            watts = oldWatts
 
         # update the list of the last xxx values
-        maxList(recent, watts, listSize);            
+        maxList(recent, watts, listSize)
         # write current power data on LCD
         writeToLCD( 2, "Pwr: "+str(watts)+" Watts" )
 
@@ -829,7 +802,7 @@ if __name__ == '__main__':
             
             # check for trend changes in POWER usage etc
             if not watch['eventHasStarted'] and not watch['heatingActive']:
-                analyzePowerData( recent );
+                analyzePowerData( recent )
             
             # build SQL statement
             sql += "('" + now.strftime("%Y-%m-%d %H:%M:%S") + "', "
