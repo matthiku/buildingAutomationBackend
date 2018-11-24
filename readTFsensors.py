@@ -59,7 +59,7 @@ from libFunctions import broadcast
 def signal_handler(signal, frame):
     lclConn.commit()
     localSQL.close()
-    print('You pressed Ctrl+C! Program gracefully ended.')
+    print('\nYou pressed Ctrl+C! Program gracefully ended.')
     sys.exit(0)
     
 # configure the above function as the signal handler
@@ -91,10 +91,10 @@ global Logger
 Logger = logging.getLogger("readTFsensors")    # create logger obj with a name of this module
 if len(sys.argv) > 1:
     Logger.setLevel(logging.DEBUG) 
-    print("Debugging is active!")
+    print("\nDebugging is active!")
 else:
     Logger.setLevel(logging.INFO)
-    print("No debugging active!")
+    print("\nNo debugging active!")
 
 now = datetime.datetime.now()           # determine log file name
 logName = "readTFsensors.txt";
@@ -161,7 +161,7 @@ def writeToDB(hw,fr,mn):
     if lastTime == timestamp:
         tempSQL = "UPDATE `sensors` SET `heatwater`=" + hw + ", `frontroom`=" + fr + ", `mainroom`=" + mn + \
             " WHERE `computertime`=" + str(timestamp) + "; "
-        print("Updating last record:", tempSQL)
+        print("\nUpdating last record:", tempSQL)
     else: 
         tempSQL = "INSERT INTO `sensors` () VALUES (" + str(timestamp) +", "+ hw +", "+ fr +", "+ mn +");"
     # execute SQL statement

@@ -938,7 +938,7 @@ def getNextCspotEvent():
 
     if room != 0 and eventStart.date() == now.date():
         eventEnd = datetime.datetime.fromisoformat(event['date_end'])
-        targetTemp = 21
+        targetTemp = 22
         Logger.debug( "Today's event **"+ eventName + "** starts at "+ str(eventStart)+" and ends at " + str(eventEnd) )
 
         # how many seconds until start of event resp. end of event?
