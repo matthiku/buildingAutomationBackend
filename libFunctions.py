@@ -75,7 +75,7 @@ def executeSQL(mySQLdbCursorObj, sqlCmd, taskDescription="access" ):
             mySQLdbCursorObj.execute("COMMIT; ")
     except Exception as e:
         errmsg = str(traceback.format_exception( *sys.exc_info() ))
-        Logger.error( sqlCmd + "Unable to " + taskDescription + " local DB!" + errmsg  + " RESULT was: " + str(result) + ' Error: ' + e )
+        Logger.error( sqlCmd + "Unable to " + taskDescription + " local DB!" + errmsg  + " RESULT was: " + str(result) + ' Error: ' + str(e) )
 
 
 # define method to read settings from local DB
@@ -125,12 +125,12 @@ DOV_PORT =  6435
 apiItems = {
     # access to remote building database
     'url'          : settings['buildingAPIurl'],
+    'headers'      : {'Accept' : 'application/json'},
     'expire'       : 0,
     'accToken'     : '',
     'tokenRequest' : {
-                        'grant_type'    : 'client_credentials',
-                        'client_id'     : 'editor',
-                        'client_secret' : settings['buildingAPIclient_secret'],
+                        'password' : settings['buildingAPIclient_secret'],
+                        'email'    : settings['buildingAPIclient_email'],
                      }
 } 
 
@@ -160,10 +160,11 @@ def handleAPIerrors(requestsResult, activity):
     return access_token and expiration time in seconds
 '''
 def getToken():
-    r = requests.post(apiItems['url']+'oauth/access_token', data=apiItems['tokenRequest'])
-    # print('\ngetToken, response: ', r)
+    r = requests.post(apiItems['url']+'login', data=apiItems['tokenRequest'], headers=apiItems['headers'])
+    print('\ngetToken, response: ', r)
     if r.status_code == 200:
         apiItems['accToken'] = r.json()['access_token']
+        apiItems['headers']['Authorization'] = 'Bearer ' + r.json()['access_token']
         return r.json()['expires_in']
     else:
         print('\ngetToken problem, result: ', r.text, '\nStatus code:', r.status_code, '\n\n')
@@ -177,14 +178,14 @@ def checkToken():
         # get access token first
         expires_in = getToken()
         # set new expiration date
-        apiItems['expire'] = now + expires_in
+        apiItems['expire'] = expires_in
 
 
 def updateSettingsStatus():
     #/settings/status/OK
     checkToken()
-    payload = { 'access_token' : apiItems['accToken']  }
-    r = requests.patch( apiItems['url']+'settings/status/OK', data=payload )
+    # payload = { 'access_token' : apiItems['accToken']  }
+    r = requests.patch( apiItems['url']+'settings/status/OK', headers=apiItems['headers'] )
     if not r.status_code == 202: # 201=new record created
         handleAPIerrors(r, "update settings status on")
         return
@@ -196,7 +197,8 @@ def getSettings( lclSQLcursor ):
 
     # first read the online settings table
     checkToken()
-    r = requests.get( apiItems['url']+'settings?access_token='+apiItems['accToken'] )
+    r = requests.get( apiItems['url']+'settings', headers=apiItems['headers'] )
+    # r = requests.get( apiItems['url']+'settings?access_token='+apiItems['accToken'] )
     # check the return code
     if not r.status_code == 200:
         handleAPIerrors(r, "read settings table from")
@@ -232,7 +234,7 @@ def getSettings( lclSQLcursor ):
 
 ''' get online event table '''
 def getApiEvents():
-    r = requests.get(apiItems['url']+'events')
+    r = requests.get(apiItems['url']+'events', headers=apiItems['headers'])
     if not r.status_code == 200:
         Logger.exception('Unable to read events table from remote DB via RESTful API!')
         return
@@ -251,7 +253,7 @@ def writeApiPowerLog( watts, boiler_on, heating_on, tstamp ):
         'heating_on'   : 1 if heating_on else 0,
         'updated_at'   : tstamp.strftime("%Y-%m-%d %H:%M:%S"),
         'access_token' : apiItems['accToken']  }
-    r = requests.post(apiItems['url']+'powerlog', data=payload)
+    r = requests.post(apiItems['url']+'powerlog', data=payload, headers=apiItems['headers'])
     if not r.status_code == 201: # (201=new record created)
         handleAPIerrors(r, "write power data to")
 
@@ -266,7 +268,7 @@ def writeApiTempLog( outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_o
         'heating_on'   : '1' if heating_on else '0',
         'power'        : watts,
         'access_token' : apiItems['accToken']  }
-    r = requests.post(apiItems['url']+'templog', data=payload)
+    r = requests.post(apiItems['url']+'templog', data=payload, headers=apiItems['headers'])
     if not r.status_code == 201: # 201=new record created
         print('\noutdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on', outdoorTemp, mainTemp, fronTemp, heatTemp, watts, heating_on)
         handleAPIerrors(r, "write tempLog data t")
@@ -280,7 +282,7 @@ def writeApiBuildingLog( what, where, text ):
         'where'        : where,
         'text'         : text,
         'access_token' : apiItems['accToken']  }
-    r = requests.post(apiItems['url']+'buildinglog', data=payload)
+    r = requests.post(apiItems['url']+'buildinglog', data=payload, headers=apiItems['headers'])
     if not r.status_code == 201: # 201=new record created
         handleAPIerrors(r, "write buildingLog data to")
 
@@ -293,7 +295,7 @@ def writeApiEventLog( id, estOn='00:00', actOn='00:00', actOff='00:00' ):
         'actualOn'     : actOn,
         'actualOff'    : actOff,
         'access_token' : apiItems['accToken']  }
-    r = requests.post(apiItems['url']+'eventlog', data=payload)
+    r = requests.post(apiItems['url']+'eventlog', data=payload, headers=apiItems['headers'])
     if not r.status_code == 201: # 201=new record created
         handleAPIerrors(r, "write eventLog data to")
 
@@ -303,7 +305,7 @@ def writeApiEventNextdate( id, nextdate ):
     checkToken()
     print("# "*90)
     payload = { 'access_token' : apiItems['accToken']  }
-    r = requests.patch( apiItems['url']+'events/'+str(id)+'/nextdate/'+nextdate, data=payload )
+    r = requests.patch( apiItems['url']+'events/'+str(id)+'/nextdate/'+nextdate, data=payload, headers=apiItems['headers'] )
     print('writeApiEventNextdate - result: ', r.text, '\n')
     if not r.status_code == 202: # 202= record updated
         handleAPIerrors(r, "write event nextdate via")
@@ -313,7 +315,7 @@ def writeApiEventNextdate( id, nextdate ):
 def updateApiEventStatus( id, status ):
     checkToken()
     payload = { 'access_token' : apiItems['accToken']  }
-    r = requests.patch( apiItems['url']+'events/'+str(id)+'/status/'+status, data=payload )
+    r = requests.patch( apiItems['url']+'events/'+str(id)+'/status/'+status, data=payload, headers=apiItems['headers'] )
     if not r.status_code == 202: # 201=new record created
         handleAPIerrors(r, "update event status via")
         return
@@ -814,8 +816,8 @@ def controlLights( mySQLdbCursorObj, which, onOrOff ):
     user = b'admin'
     pwrd = b'jesusislord316'
     tnResult=''
-    tn = telnetlib.Telnet(DOV_HOST,DOV_PORT)
     try:
+        tn = telnetlib.Telnet(DOV_HOST,DOV_PORT)
         tn.read_until(b">> ")
         tn.write(b'user ' + user + b"\n")
         tn.read_until(b">> ")
@@ -829,7 +831,8 @@ def controlLights( mySQLdbCursorObj, which, onOrOff ):
         tnResult = tn.read_all().decode("utf-8")
     except Exception as e:
         errmsg = str(traceback.format_exception( *sys.exc_info() ))
-        Logger.error("Error when trying to telnet with Dovado Router for Light control! " + errmsg + ' Exception: ' + e )
+        print (e)
+        Logger.error("Error when trying to telnet with Dovado Router for Light control! " + errmsg + ' Exception: ' + str(e) )
         return
     #if not 'bye' in tnResult:
     print('\nwhich, onOrOff, tnResult', which, onOrOff, tnResult)

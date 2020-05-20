@@ -97,8 +97,8 @@ else:
     print("\nNo debugging active!")
 
 now = datetime.datetime.now()           # determine log file name
-logName = "readTFsensors.txt";
-if onLinux: logDir = "./Logfiles/";
+logName = "readTFsensors.txt"
+if onLinux: logDir = "./Logfiles/"
 
 file_log_handler = logging.FileHandler( os.path.join(logDir, logName) ) 
 Logger.addHandler(file_log_handler)
@@ -152,7 +152,7 @@ def writeToDB(hw,fr,mn):
             "UPDATE `sensors` SET `computertime`=" + str(timestamp) + \
             " WHERE `computertime`=" + str(lastTime) + "; "
         try:    count=localSQL.execute(tempSQL)
-        except: Logger.exception("Unable to write sensor values to local DB!")    
+        except: Logger.exception("Unable to update sensor values to local DB!")    
         return    
 
     # create SQL statement
@@ -165,9 +165,9 @@ def writeToDB(hw,fr,mn):
     else: 
         tempSQL = "INSERT INTO `sensors` () VALUES (" + str(timestamp) +", "+ hw +", "+ fr +", "+ mn +");"
     # execute SQL statement
+    Logger.debug(str(count) + " records written to DB by: "+tempSQL)
     try:    count=localSQL.execute(tempSQL)
     except: Logger.exception("Unable to write sensor values to local DB!")    
-    Logger.debug(str(count) + " records written to DB by: "+tempSQL)
 
 
 
