@@ -1,0 +1,72 @@
+{
+  "data": {
+    "csv": {
+      "enabled": true,
+      "file_name": "C:\\Users\\Matthias Kuhs\\Dropbox\\BuildingControl\\LoggingData.csv"
+    },
+    "time_format": "de",
+    "time_format_strftime": "%Y%m%d_%H%M%S"
+  },
+  "debug": {
+    "log": {
+      "enabled": false,
+      "file_name": "C:\\Users\\Matthias Kuhs\\logger_debug_1669180910.log",
+      "level": "debug"
+    },
+    "time_format": "de"
+  },
+  "devices": [
+    {
+      "host": "default",
+      "name": "Temperature Bricklet",
+      "options": {
+        "I2C Mode": {
+          "value": "400kHz"
+        }
+      },
+      "uid": "bSC",
+      "values": {
+        "Temperature": {
+          "interval": 0
+        }
+      }
+    },
+    {
+      "host": "default",
+      "name": "Temperature Bricklet",
+      "options": {
+        "I2C Mode": {
+          "value": "400kHz"
+        }
+      },
+      "uid": "6Jm",
+      "values": {
+        "Temperature": {
+          "interval": 0
+        }
+      }
+    },
+    {
+      "host": "default",
+      "name": "Temperature Bricklet",
+      "options": {
+        "I2C Mode": {
+          "value": "400kHz"
+        }
+      },
+      "uid": "bTh",
+      "values": {
+        "Temperature": {
+          "interval": 0
+        }
+      }
+    }
+  ],
+  "hosts": {
+    "default": {
+      "name": "localhost",
+      "port": 4223,
+      "secret": null
+    }
+  }
+}

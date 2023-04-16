@@ -193,7 +193,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 ''' EVENT management 
     -------------------------- '''
-def manageOnlineEvents( ):
+def manageOnlineEvents():
     ''' Manage online events DB - check if there are updates or changes '''
 
     # -------------------------------------------------------------------
@@ -905,6 +905,8 @@ if __name__ == '__main__':
                 else:
                     currentRoomTemp = mainTemp
 
+                tempDifference = targetTemp - round(float(currentRoomTemp))
+
                 #--------------------------------------------------------------------------------------
                 #                   Calculate Switch-on Time
                 #--------------------------------------------------------------------------------------
@@ -921,8 +923,8 @@ if __name__ == '__main__':
                 #
                 # 3. check if we are already in the heating phase
                 #
-                Logger.debug("Calculated values: (toStart - heatingDuration - currentRoomTemp) \n" + \
-                                formatSeconds(toStart)+' - '+formatSeconds(heatingDuration)+' - '+str(currentRoomTemp) )
+                Logger.info("Calculated values:\n(outdoorTemp - increase/Hour - heatingDuration - tempDifference)\n" + \
+                                formatSeconds(outdoorTemp)+' - '+str(increasePerHour)+' - '+formatSeconds(heatingDuration)+' - '+str(tempDifference) )
 
 
                 # report estimated heating switch-on time to DB
@@ -935,15 +937,18 @@ if __name__ == '__main__':
                 
                 #-------------------------------------------------------------------------------------------------
                 # if time to event start is shorter than pre-heating timespan , we need to switch heating on:
+                # No pre-heating necessary if difference between target temp and current room temp is < 1.1 degrees
                 #-------------------------------------------------------------------------------------------------
-                if toStart < heatingDuration and sinceEnd < 0 and not boiler_on:
+                if toStart < heatingDuration and sinceEnd < 0 and not boiler_on and tempDifference > 1:
                     # we need to switch on heating !!
                     watch['heatingActive'] = True
                     notifyAll( 
                                 "Trying to switch on heating for " + todaysEvent + \
-                                ".\n\n (toStart, heatingDuration, sinceEnd) \n" + \
+                                ".\n\n (toStart, heatingDuration, sinceEnd) \n\n" + \
+                                    "\n\nTemp. Difference was: " + tempDifference + "\n\n" + \
                                 formatSeconds(toStart)+' - '+formatSeconds(heatingDuration)+' - '+formatSeconds(sinceEnd) + \
-                                "\n\nCurrent room temp.: " + str(currentRoomTemp) + "\nTarget room temp.: " + str(targetTemp)
+                                "\n\nCurrent room temp.: " + str(currentRoomTemp) + "\nTarget room temp.: " + str(targetTemp) + \
+                                "\n\nCalculated increase per hour: " + str(increasePerHour) + " based on outdoor temp " + str(outdoorTemp)
                              )
                     switchHeating( lclSQLcursor, True, True, eventID, online_id )
                 
@@ -957,6 +962,8 @@ if __name__ == '__main__':
                         if watch['eventHasStarted']:
                             # switch heating off, but leave boiler (hotwater) on, since event is already ongoing
                             switchHeating( lclSQLcursor, True, False, eventID, online_id )
+                            notifyAll("Heating off but keep hotwater on since event has started and traget temp has been reached.\n"+\
+                                "\n\nCurrent room temp.: " + str(currentRoomTemp) + "\nTarget room temp.: " + str(targetTemp) )
                         else:
                             # switch everything off if event hasn't started yet
                             switchHeating( lclSQLcursor, False, False, eventID, online_id )

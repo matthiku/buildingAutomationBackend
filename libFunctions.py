@@ -173,12 +173,17 @@ def getToken():
 ''' access token handling '''
 def checkToken():    
     now = datetime.datetime.now().timestamp()
+    if apiItems['expire'] == 0 or apiItems['expire'] == "None":
+        print(apiItems)
     # check if token has expired
-    if apiItems['expire'] - now < 1:
+    if apiItems['expire'] and apiItems['expire'] - now < 1:
         # get access token first
         expires_in = getToken()
         # set new expiration date
         apiItems['expire'] = expires_in
+    else:
+        print('*** checkToken failed! ***')
+        print(apiItems)
 
 
 def updateSettingsStatus():
@@ -289,13 +294,21 @@ def writeApiBuildingLog( what, where, text ):
 
 def writeApiEventLog( id, estOn='00:00', actOn='00:00', actOff='00:00' ):
     checkToken()
+    Logger.info("Code writeApiEventLog, data received: " + \
+                str(id) + " " + str(estOn) + " " + str(actOn) + " " + str(actOff))
     payload = { # create payload data as dict for buildingAPI
-        'event_id'     : id,
-        'estimateOn'   : estOn,
-        'actualOn'     : actOn,
-        'actualOff'    : actOff,
-        'access_token' : apiItems['accToken']  }
-    r = requests.post(apiItems['url']+'eventlog', data=payload, headers=apiItems['headers'])
+            'event_id'     : id,
+            'estimateOn'   : estOn[:5],
+            'actualOn'     : actOn[:5],
+            'actualOff'    : actOff[:5],
+            'access_token' : apiItems['accToken']
+        }
+    # send HTTP POST request to API
+    r = requests.post(
+            apiItems['url'] + 'eventlog',
+            data=payload,
+            headers=apiItems['headers']
+        )
     if not r.status_code == 201: # 201=new record created
         handleAPIerrors(r, "write eventLog data to")
 
@@ -563,7 +576,7 @@ def sendEmail( destination, subject, content ):
     sender =     'raspitf1@gmail.com'
 
     USERNAME = "raspitf1"
-    PASSWORD = "jesuslovesme316"
+    PASSWORD = "Jesuslovesme!316"
 
     # typical values for text_subtype are plain, html, xml
     text_subtype = 'plain'
@@ -941,7 +954,7 @@ def getNextCspotEvent():
 
     if room != 0 and eventStart.date() == now.date():
         eventEnd = datetime.datetime.fromisoformat(event['date_end'])
-        targetTemp = 22
+        targetTemp = 21
         Logger.debug( "Today's event **"+ eventName + "** starts at "+ str(eventStart)+" and ends at " + str(eventEnd) )
 
         # how many seconds until start of event resp. end of event?
@@ -1040,7 +1053,7 @@ def reportEstimateOn( mySQLdbCursorObj, timeDiff, eventID, online_id ):
     ''' report estimated heating switch-on time to DB '''
     # first check if the new estimation is way different to the previous one
     mySQLdbCursorObj.execute('SELECT * FROM `heating_logbook` ORDER BY timestamp DESC LIMIT 1')
-    oldData    = mySQLdbCursorObj.fetchone() 
+    oldData = mySQLdbCursorObj.fetchone() 
 
     # calculate estimated switch-on time and timediff from now
     try:
@@ -1060,6 +1073,7 @@ def reportEstimateOn( mySQLdbCursorObj, timeDiff, eventID, online_id ):
     executeSQL( mySQLdbCursorObj, sql, 'write estimated switch-on time into' )
     # write into remote DB table via API
     writeApiEventLog( online_id, estOn=estOn )
+
 
 def updateLclSettings( lclSQLcursor, lclSettings, rmtSettings ):
 
